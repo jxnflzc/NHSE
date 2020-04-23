@@ -10,20 +10,40 @@ using NHSE.Sprites;
 
 namespace NHSE.WinForms
 {
-    public partial class Editor : Form
+    public sealed partial class Editor : Form
     {
         private readonly HorizonSave SAV;
+        private readonly VillagerEditor Villagers;
 
         public Editor(HorizonSave file)
         {
             InitializeComponent();
+
+            Menu_Language.SelectedIndex = 0; // en -- triggers translation
+            // this.TranslateInterface(GameInfo.CurrentLanguage);
+
             SAV = file;
-            LoadAll();
+
+            LoadPlayers();
+            LoadMain();
+            Villagers = LoadVillagers();
+
+            Text = SAV.GetSaveTitle("NHSE");
         }
 
-        private void Menu_Open_Click(object sender, EventArgs e)
+        private void Menu_Settings_Click(object sender, EventArgs e)
         {
-            WinFormsUtil.Alert("I don't do anything yet!");
+            using var editor = new SettingsEditor();
+            editor.ShowDialog();
+        }
+
+        private void Menu_Language_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            Menu_Options.DropDown.Close();
+            if ((uint)Menu_Language.SelectedIndex >= GameLanguage.LanguageCount)
+                return;
+            GameInfo.SetLanguage2Char(Menu_Language.SelectedIndex);
+            this.TranslateInterface(GameInfo.CurrentLanguage);
         }
 
         private void Menu_Save_Click(object sender, EventArgs e)
@@ -37,10 +57,10 @@ namespace NHSE.WinForms
             catch (Exception ex)
 #pragma warning restore CA1031 // Do not catch general exception types
             {
-                WinFormsUtil.Error("Unable to save files to their original location.", ex.Message);
+                WinFormsUtil.Error(MessageStrings.MsgSaveDataExportFail, ex.Message);
                 return;
             }
-            WinFormsUtil.Alert("Saved all save data!");
+            WinFormsUtil.Alert(MessageStrings.MsgSaveDataExportSuccess);
         }
 
         private void Menu_DumpDecrypted_Click(object sender, EventArgs e)
@@ -70,12 +90,12 @@ namespace NHSE.WinForms
             var dir = Path.GetDirectoryName(main);
             if (dir is null || !Directory.Exists(dir))
             {
-                WinFormsUtil.Alert("Directory does not exist!");
+                WinFormsUtil.Alert(MessageStrings.MsgImportDirectoryDoesNotExist);
                 return;
             }
 
             SAV.Load(dir);
-            LoadAll(); // reload all fields
+            ReloadAll(); // reload all fields
             System.Media.SystemSounds.Asterisk.Play();
         }
 
@@ -84,11 +104,11 @@ namespace NHSE.WinForms
             var result = SAV.GetInvalidHashes().ToArray();
             if (result.Length == 0)
             {
-                WinFormsUtil.Alert("Hashes are valid.");
+                WinFormsUtil.Alert(MessageStrings.MsgSaveDataHashesValid);
                 return;
             }
 
-            if (WinFormsUtil.Prompt(MessageBoxButtons.YesNo, "Export results to clipboard?") != DialogResult.Yes)
+            if (WinFormsUtil.Prompt(MessageBoxButtons.YesNo, MessageStrings.MsgAskExportResultToClipboard) != DialogResult.Yes)
                 return;
 
             var lines = result.Select(z => z.ToString());
@@ -108,17 +128,28 @@ namespace NHSE.WinForms
             sysbot.Show();
         }
 
-        private void LoadAll()
+        private void ReloadAll()
         {
+            Villagers.Villagers = SAV.Main.GetVillagers();
+            Villagers.Origin = SAV.Players[0].Personal;
             LoadPlayers();
-            LoadVillagers();
             LoadMain();
+        }
+
+        private VillagerEditor LoadVillagers()
+        {
+            var p0 = SAV.Players[0].Personal;
+            var villagers = SAV.Main.GetVillagers();
+            var v = new VillagerEditor(villagers, p0, SAV.Main, true) {Dock = DockStyle.Fill};
+            Tab_Villagers.Controls.Add(v);
+            return v;
         }
 
         private void SaveAll()
         {
             SavePlayer(PlayerIndex);
-            SaveVillager(VillagerIndex);
+            Villagers.Save();
+            SAV.Main.SetVillagers(Villagers.Villagers);
         }
 
         #region Player Editing
@@ -131,17 +162,7 @@ namespace NHSE.WinForms
 
             PlayerIndex = -1;
             CB_Players.SelectedIndex = 0;
-        }
-
-        private void LoadVillagers()
-        {
-            CB_Personality.Items.Clear();
-            var personalities = Enum.GetNames(typeof(VillagerPersonality));
-            foreach (var p in personalities)
-                CB_Personality.Items.Add(p);
-
-            VillagerIndex = -1;
-            LoadVillager(0);
+            NUD_PlayerHouse.Maximum = CB_Players.Items.Count;
         }
 
         private void LoadMain()
@@ -151,7 +172,6 @@ namespace NHSE.WinForms
 
         private int PlayerIndex = -1;
         private void LoadPlayer(object sender, EventArgs e) => LoadPlayer(CB_Players.SelectedIndex);
-        private void LoadVillager(object sender, EventArgs e) => LoadVillager((int)NUD_Villager.Value - 1);
         private void LoadPattern(object sender, EventArgs e) => LoadPattern((int)NUD_PatternIndex.Value - 1);
 
         private void B_EditPlayerItems_Click(object sender, EventArgs e)
@@ -263,11 +283,11 @@ namespace NHSE.WinForms
             pers.Wallet = wallet;
         }
 
-        private void B_EditActivities_Click(object sender, EventArgs e)
+        private void B_EditAchievements_Click(object sender, EventArgs e)
         {
             var pers = SAV.Players[PlayerIndex].Personal;
             var records = pers.GetActivities();
-            using var editor = new ActivityEditor(records);
+            using var editor = new AchievementEditor(records);
             if (editor.ShowDialog() == DialogResult.OK)
                 pers.SetActivities(records);
         }
@@ -279,55 +299,6 @@ namespace NHSE.WinForms
             using var editor = new FlagEditor(flags);
             if (editor.ShowDialog() == DialogResult.OK)
                 pers.SetEventFlagsPlayer(flags);
-        }
-
-        #endregion
-
-        #region Villager Editing
-
-        private int VillagerIndex = -1;
-
-        private void LoadVillager(int index)
-        {
-            if (VillagerIndex >= 0)
-                SaveVillager(VillagerIndex);
-
-            if (index < 0)
-                return;
-
-            var v = SAV.Main.GetVillager(index);
-            LoadVillager(v);
-            VillagerIndex = index;
-        }
-
-        private void LoadVillager(Villager v)
-        {
-            NUD_Species.Value = v.Species;
-            NUD_Variant.Value = v.Variant;
-            CB_Personality.SelectedIndex = (int) v.Personality;
-            TB_Catchphrase.Text = v.CatchPhrase;
-        }
-
-        private void SaveVillager(int index)
-        {
-            var v = SAV.Main.GetVillager(index);
-
-            v.Species = (byte)NUD_Species.Value;
-            v.Variant = (byte)NUD_Variant.Value;
-            v.Personality = (VillagerPersonality)CB_Personality.SelectedIndex;
-            v.CatchPhrase = TB_Catchphrase.Text;
-
-            SAV.Main.SetVillager(v, index);
-        }
-
-        private string GetCurrentVillagerInternalName() => VillagerUtil.GetInternalVillagerName((VillagerSpecies)NUD_Species.Value, (int)NUD_Variant.Value);
-        private void ChangeVillager(object sender, EventArgs e) => ChangeVillager();
-        private void ChangeVillager()
-        {
-            var name = GetCurrentVillagerInternalName();
-            L_InternalName.Text = name;
-            L_ExternalName.Text = GameInfo.Strings.GetVillager(name);
-            PB_Villager.Image = VillagerSprite.GetVillagerSprite(name);
         }
 
         #endregion
@@ -359,15 +330,13 @@ namespace NHSE.WinForms
             var pb = WinFormsUtil.GetUnderlyingControl<PictureBox>(sender);
             if (pb?.Image == null)
             {
-                WinFormsUtil.Alert("No picture loaded.");
+                WinFormsUtil.Alert(MessageStrings.MsgNoPictureLoaded);
                 return;
             }
 
             string name;
             if (pb == PB_Player)
                 name = SAV.Players[PlayerIndex].Personal.PlayerName;
-            else if (pb == PB_Villager)
-                name = L_ExternalName.Text;
             else
                 name = "photo";
 
@@ -381,86 +350,6 @@ namespace NHSE.WinForms
                 return;
 
             bmp.Save(sfd.FileName, ImageFormat.Png);
-        }
-
-        private void B_DumpVillager_Click(object sender, EventArgs e)
-        {
-            if (ModifierKeys == Keys.Shift)
-            {
-                using var fbd = new FolderBrowserDialog();
-                if (fbd.ShowDialog() != DialogResult.OK)
-                    return;
-
-                var dir = Path.GetDirectoryName(fbd.SelectedPath);
-                if (dir == null || !Directory.Exists(dir))
-                    return;
-                SAV.Main.DumpVillagers(fbd.SelectedPath);
-                return;
-            }
-
-            var name = L_ExternalName.Text;
-            using var sfd = new SaveFileDialog
-            {
-                Filter = "New Horizons Villager (*.nhv)|*.nhv|All files (*.*)|*.*",
-                FileName = $"{name}.nhv",
-            };
-            if (sfd.ShowDialog() != DialogResult.OK)
-                return;
-
-            SaveVillager(VillagerIndex);
-            var v = SAV.Main.GetVillager(VillagerIndex);
-            File.WriteAllBytes(sfd.FileName, v.Data);
-        }
-
-        private void B_LoadVillager_Click(object sender, EventArgs e)
-        {
-            var name = L_ExternalName.Text;
-            using var ofd = new OpenFileDialog
-            {
-                Filter = "New Horizons Villager (*.nhv)|*.nhv|All files (*.*)|*.*",
-                FileName = $"{name}.nhv",
-            };
-            if (ofd.ShowDialog() != DialogResult.OK)
-                return;
-
-            var file = ofd.FileName;
-            var original = SAV.Main.GetVillager(VillagerIndex);
-            var expectLength = original.Data.Length;
-            var fi = new FileInfo(file);
-            if (fi.Length != expectLength)
-            {
-                var msg = $"Imported villager's data length (0x{fi.Length:X}) does not match the required length (0x{expectLength:X}).";
-                WinFormsUtil.Error("Cancelling:", msg);
-                return;
-            }
-
-            var data = File.ReadAllBytes(ofd.FileName);
-            var v = new Villager(data);
-            var player0 = SAV.Players[0].Personal;
-            if (!v.IsOriginatedFrom(player0))
-            {
-                var result = WinFormsUtil.Prompt(MessageBoxButtons.YesNoCancel,
-                    $"Imported Villager did not originate from Villager0 ({player0.PlayerName})'s data.", "Update values?");
-                if (result == DialogResult.Cancel)
-                    return;
-                if (result == DialogResult.Yes)
-                    v.ChangeOrigins(player0, v.Data);
-            }
-
-            SAV.Main.SetVillager(v, VillagerIndex);
-            LoadVillager(v);
-        }
-
-        private void B_EditFurniture_Click(object sender, EventArgs e)
-        {
-            var v = SAV.Main.GetVillager(VillagerIndex);
-            var items = v.Furniture;
-            using var editor = new PlayerItemEditor<VillagerItem>(items, 8, 2);
-            if (editor.ShowDialog() != DialogResult.OK)
-                return;
-
-            v.Furniture = items;
-            SAV.Main.SetVillager(v, VillagerIndex);
         }
 
         private void B_DumpDesign_Click(object sender, EventArgs e)
@@ -509,8 +398,8 @@ namespace NHSE.WinForms
             var fi = new FileInfo(file);
             if (fi.Length != expectLength)
             {
-                var msg = $"Imported Design Pattern's data length (0x{fi.Length:X}) does not match the required length (0x{expectLength:X}).";
-                WinFormsUtil.Error("Cancelling:", msg);
+                var msg = string.Format(MessageStrings.MsgDataSizeMismatchImport, fi.Length, expectLength);
+                WinFormsUtil.Error(MessageStrings.MsgCanceling, msg);
                 return;
             }
 
@@ -519,8 +408,8 @@ namespace NHSE.WinForms
             var player0 = SAV.Players[0].Personal;
             if (!d.IsOriginatedFrom(player0))
             {
-                var result = WinFormsUtil.Prompt(MessageBoxButtons.YesNoCancel,
-                    $"Imported Design Pattern did not originate from Villager0 ({player0.PlayerName})'s data.", "Update values?");
+                var notHost = string.Format(MessageStrings.MsgDataDidNotOriginateFromHost_0, player0.PlayerName);
+                var result = WinFormsUtil.Prompt(MessageBoxButtons.YesNoCancel, notHost, MessageStrings.MsgAskUpdateValues);
                 if (result == DialogResult.Cancel)
                     return;
                 if (result == DialogResult.Yes)
@@ -566,6 +455,71 @@ namespace NHSE.WinForms
         {
             using var editor = new FieldItemEditor(SAV.Main);
             editor.ShowDialog();
+        }
+
+        private void B_DumpHouse_Click(object sender, EventArgs e)
+        {
+            if (ModifierKeys == Keys.Shift)
+            {
+                using var fbd = new FolderBrowserDialog();
+                if (fbd.ShowDialog() != DialogResult.OK)
+                    return;
+
+                var dir = Path.GetDirectoryName(fbd.SelectedPath);
+                if (dir == null || !Directory.Exists(dir))
+                    return;
+                SAV.DumpPlayerHouses(fbd.SelectedPath);
+                return;
+            }
+
+            var index = (int)(NUD_PlayerHouse.Value - 1);
+            var name = CB_Players.Items[index].ToString();
+            using var sfd = new SaveFileDialog
+            {
+                Filter = "New Horizons Player House (*.nhph)|*.nhph|All files (*.*)|*.*",
+                FileName = $"{name}.nhph",
+            };
+            if (sfd.ShowDialog() != DialogResult.OK)
+                return;
+
+            var h = SAV.Main.GetPlayerHouse(index);
+            var data = h.ToBytesClass();
+            File.WriteAllBytes(sfd.FileName, data);
+        }
+
+        private void B_LoadHouse_Click(object sender, EventArgs e)
+        {
+            var index = (int)(NUD_PlayerHouse.Value - 1);
+            var name = CB_Players.Items[index].ToString();
+            using var ofd = new OpenFileDialog
+            {
+                Filter = "New Horizons Player House (*.nhph)|*.nhph|All files (*.*)|*.*",
+                FileName = $"{name}.nhph",
+            };
+            if (ofd.ShowDialog() != DialogResult.OK)
+                return;
+
+            var file = ofd.FileName;
+            var fi = new FileInfo(file);
+            const int expectLength = PlayerHouse.SIZE;
+            if (fi.Length != expectLength)
+            {
+                var msg = string.Format(MessageStrings.MsgDataSizeMismatchImport, fi.Length, expectLength);
+                WinFormsUtil.Error(MessageStrings.MsgCanceling, msg);
+                return;
+            }
+
+            var data = File.ReadAllBytes(file);
+            var h = data.ToClass<PlayerHouse>();
+            SAV.Main.SetPlayerHouse(h, index);
+        }
+
+        private void B_EditLandFlags_Click(object sender, EventArgs e)
+        {
+            var flags = SAV.Main.GetEventFlagLand();
+            using var editor = new LandFlagEditor(flags);
+            if (editor.ShowDialog() == DialogResult.OK)
+                SAV.Main.SetEventFlagLand(flags);
         }
     }
 }

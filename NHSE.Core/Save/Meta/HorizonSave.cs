@@ -79,5 +79,20 @@ namespace NHSE.Core
             }
             return true;
         }
+
+        public string GetSaveTitle(string prefix)
+        {
+            var townName = Players[0].Personal.TownName;
+            var timestamp = Main.LastSaved.TimeStamp;
+
+            return $"{prefix} - {townName} @ {timestamp}";
+        }
+
+        public string GetBackupFolderTitle()
+        {
+            var townName = Players[0].Personal.TownName;
+            var timestamp = Main.LastSaved.TimeStamp.Replace(':', '.');
+            return StringUtil.CleanFileName($"{townName} - {timestamp}");
+        }
     }
 }

@@ -17,6 +17,7 @@ namespace NHSE.WinForms
         public BuildingEditor(IReadOnlyList<Building> buildings, MainSave sav)
         {
             InitializeComponent();
+            this.TranslateInterface(GameInfo.CurrentLanguage);
             SAV = sav;
             Buildings = buildings;
             Terrain = new TerrainManager(sav.GetTerrain());
@@ -74,10 +75,11 @@ namespace NHSE.WinForms
             NUD_BuildingType.Value = (int)b.BuildingType;
             NUD_X.Value = b.X;
             NUD_Y.Value = b.Y;
-            NUD_Rot.Value = b.Rotation;
-            NUD_08.Value = b.Unk08;
-            NUD_0C.Value = b.Unk0C;
-            NUD_10.Value = b.Unk10;
+            NUD_Angle.Value = b.Angle;
+            NUD_Bit.Value = b.Bit;
+            NUD_Type.Value = b.Type;
+            NUD_TypeArg.Value = b.TypeArg;
+            NUD_UniqueID.Value = b.UniqueID;
             Loading = false;
         }
 
@@ -93,14 +95,16 @@ namespace NHSE.WinForms
                 b.X = (ushort)n.Value;
             else if (sender == NUD_Y)
                 b.Y = (ushort)n.Value;
-            else if (sender == NUD_Rot)
-                b.Rotation = (ushort)n.Value;
-            else if (sender == NUD_08)
-                b.Unk08 = (uint)n.Value;
-            else if (sender == NUD_0C)
-                b.Unk0C = (uint)n.Value;
-            else if (sender == NUD_10)
-                b.Unk10 = (uint)n.Value;
+            else if (sender == NUD_Angle)
+                b.Angle = (byte)n.Value;
+            else if (sender == NUD_Bit)
+                b.Bit = (sbyte)n.Value;
+            else if (sender == NUD_Type)
+                b.Type = (ushort)n.Value;
+            else if (sender == NUD_TypeArg)
+                b.TypeArg = (byte)n.Value;
+            else if (sender == NUD_UniqueID)
+                b.UniqueID = (ushort)n.Value;
 
             LB_Items.Items[Index] = Buildings[Index].ToString();
             DrawMap(Index);
@@ -146,10 +150,11 @@ namespace NHSE.WinForms
             var path = ofd.FileName;
             var fi = new FileInfo(path);
 
-            const int expect = MainSaveOffsets.BuildingCount * Building.SIZE;
-            if (fi.Length != expect)
+            const int expect = Building.SIZE * MainSaveOffsets.BuildingCount; // 46
+            const int oldSize = Building.SIZE * 40;
+            if (fi.Length != expect && fi.Length != oldSize)
             {
-                WinFormsUtil.Error($"Expected size (0x{expect:X}) != Input size (0x{fi.Length:X}", path);
+                WinFormsUtil.Error(string.Format(MessageStrings.MsgDataSizeMismatchImport, fi.Length, expect));
                 return;
             }
 

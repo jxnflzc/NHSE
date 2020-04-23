@@ -12,6 +12,7 @@ namespace NHSE.WinForms
         public SysBotRAMEdit(InjectionType type)
         {
             InitializeComponent();
+            this.TranslateInterface(GameInfo.CurrentLanguage);
             Bot = new SysBotController(type);
             RamOffset.Text = Bot.GetDefaultOffset().ToString("X8");
 
@@ -32,7 +33,7 @@ namespace NHSE.WinForms
             var offset = StringUtil.GetHexValue(RamOffset.Text);
             if (offset == 0)
             {
-                WinFormsUtil.Error("Incorrect hex offset.");
+                WinFormsUtil.Error(MessageStrings.MsgInvalidHexValue);
                 return;
             }
 

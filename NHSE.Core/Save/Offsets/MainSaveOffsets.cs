@@ -7,6 +7,8 @@ namespace NHSE.Core
     /// </summary>
     public abstract class MainSaveOffsets
     {
+        public const int PlayerCount = 8;
+
         public abstract int Villager { get; }
         public const int VillagerSize = 0x12AB0;
         public const int VillagerCount = 10;
@@ -15,16 +17,21 @@ namespace NHSE.Core
         public const int PatternCount = 50;
 
         public abstract int Buildings { get; }
-        public const int BuildingCount = 40; // actual count unknown, max may be 46
+        public const int BuildingCount = 46;
 
         public abstract int RecycleBin { get; }
         public const int RecycleBinCount = 40;
 
         public abstract int TurnipExchange { get; }
 
+        public abstract int EventFlagLand { get; }
         public abstract int FieldItem { get; }
         public abstract int Acres { get; }
         public abstract int Terrain { get; }
+        public abstract int PlayerHouseList { get; }
+        public abstract int NpcHouseList { get; }
+
+        public abstract int LastSavedTime { get; }
 
         public static MainSaveOffsets GetOffsets(FileHeaderInfo Info)
         {
@@ -37,6 +44,7 @@ namespace NHSE.Core
                 3 => new MainSaveOffsets11(),
                 4 => new MainSaveOffsets11(),
                 5 => new MainSaveOffsets11(),
+                6 => new MainSaveOffsets12(),
                 _ => throw new IndexOutOfRangeException("Unknown revision!"),
             };
         }

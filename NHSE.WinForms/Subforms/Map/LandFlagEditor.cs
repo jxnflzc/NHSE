@@ -4,16 +4,18 @@ using NHSE.Core;
 
 namespace NHSE.WinForms
 {
-    public partial class FlagEditor : Form
+    public partial class LandFlagEditor : Form
     {
         private readonly short[] Counts;
 
-        public FlagEditor(short[] counts)
+        public LandFlagEditor(short[] counts)
         {
-            Counts = counts;
             InitializeComponent();
+            this.TranslateInterface(GameInfo.CurrentLanguage);
+
+            Counts = counts;
             for (ushort i = 0; i < counts.Length; i++)
-                LB_Counts.Items.Add(EventFlagPlayer.GetFlagName(i, counts[i]));
+                LB_Counts.Items.Add(EventFlagLand.GetFlagName(i, counts[i]));
             DialogResult = DialogResult.Cancel;
             LB_Counts.SelectedIndex = 0;
         }
@@ -34,7 +36,7 @@ namespace NHSE.WinForms
                 return;
 
             Counts[Index] = (short) NUD_Count.Value;
-            LB_Counts.Items[Index] = EventFlagPlayer.GetFlagName((ushort)Index, Counts[Index]);
+            LB_Counts.Items[Index] = EventFlagLand.GetFlagName((ushort)Index, Counts[Index]);
         }
 
         private void LB_Counts_SelectedIndexChanged(object sender, EventArgs e)

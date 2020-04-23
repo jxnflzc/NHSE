@@ -12,6 +12,10 @@ namespace NHSE.WinForms
     /// </summary>
     public partial class Main : Form
     {
+        public const string BackupFolderName = "bak";
+        public static readonly string WorkingDirectory = Application.StartupPath;
+        public static readonly string BackupPath = Path.Combine(WorkingDirectory, BackupFolderName);
+
         public Main()
         {
             InitializeComponent();
@@ -32,8 +36,8 @@ namespace NHSE.WinForms
             bool sized = file.ValidateSizes();
             if (!sized)
             {
-                const string sizeBad = "Save file sizes appear to be incorrect.";
-                if (WinFormsUtil.Prompt(MessageBoxButtons.YesNo, sizeBad, "Continue?") != DialogResult.Yes)
+                var prompt = WinFormsUtil.Prompt(MessageBoxButtons.YesNo, MessageStrings.MsgSaveDataSizeMismatch, MessageStrings.MsgAskContinue);
+                if (prompt != DialogResult.Yes)
                     return;
             }
 
@@ -112,8 +116,7 @@ namespace NHSE.WinForms
             var dir = Path.GetDirectoryName(path);
             if (dir is null || !Directory.Exists(dir)) // ya never know
             {
-                WinFormsUtil.Error("Unable to open the folder that contains the save file.",
-                    "Try moving it to another location and opening from there.");
+                WinFormsUtil.Error(MessageStrings.MsgSaveDataImportFail, MessageStrings.MsgSaveDataImportSuggest);
                 return;
             }
 
@@ -127,13 +130,40 @@ namespace NHSE.WinForms
 
             var settings = Settings.Default;
             settings.LastFilePath = path;
+
+            if (!settings.BackupPrompted)
+            {
+                settings.BackupPrompted = true;
+                var line1 = string.Format(MessageStrings.MsgBackupCreateLocation, BackupFolderName);
+                var line2 = MessageStrings.MsgBackupCreateQuestion;
+                var prompt = WinFormsUtil.Prompt(MessageBoxButtons.YesNo, line1, line2);
+                settings.AutomaticBackup = prompt == DialogResult.Yes;
+            }
+
+            if (settings.AutomaticBackup)
+                BackupSaveFile(file, path, BackupPath);
+
             settings.Save();
+        }
+
+        private static void BackupSaveFile(HorizonSave file, string path, string bak)
+        {
+            Directory.CreateDirectory(bak);
+            var dest = Path.Combine(bak, file.GetBackupFolderTitle());
+            if (!Directory.Exists(dest))
+                FileUtil.CopyFolder(path, dest);
         }
 
         private void Main_KeyDown(object sender, KeyEventArgs e)
         {
             if (ModifierKeys != Keys.Control)
+            {
+#if DEBUG
+                if (ModifierKeys == (Keys.Control | Keys.Alt) && e.KeyCode == Keys.D)
+                    DevUtil.UpdateAll();
+#endif
                 return;
+            }
 
             switch (e.KeyCode)
             {
@@ -154,6 +184,12 @@ namespace NHSE.WinForms
                 case Keys.H:
                 {
                     using var editor = new SysBotRAMEdit(InjectionType.Generic);
+                    editor.ShowDialog();
+                    break;
+                }
+                case Keys.P:
+                {
+                    using var editor = new SettingsEditor();
                     editor.ShowDialog();
                     break;
                 }

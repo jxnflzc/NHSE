@@ -1,6 +1,6 @@
 ﻿namespace NHSE.WinForms
 {
-    partial class ActivityEditor
+    partial class VillagerFlagEditor
     {
         /// <summary>
         /// Required designer variable.
@@ -75,10 +75,15 @@
             this.NUD_Count.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.NUD_Count.Location = new System.Drawing.Point(200, 28);
             this.NUD_Count.Maximum = new decimal(new int[] {
-            2147483647,
+            32767,
             0,
             0,
             0});
+            this.NUD_Count.Minimum = new decimal(new int[] {
+            32768,
+            0,
+            0,
+            -2147483648});
             this.NUD_Count.Name = "NUD_Count";
             this.NUD_Count.Size = new System.Drawing.Size(72, 20);
             this.NUD_Count.TabIndex = 9;
@@ -90,11 +95,11 @@
             this.L_Count.AutoSize = true;
             this.L_Count.Location = new System.Drawing.Point(197, 12);
             this.L_Count.Name = "L_Count";
-            this.L_Count.Size = new System.Drawing.Size(38, 13);
+            this.L_Count.Size = new System.Drawing.Size(37, 13);
             this.L_Count.TabIndex = 10;
-            this.L_Count.Text = "Count:";
+            this.L_Count.Text = "Value:";
             // 
-            // ActivityEditor
+            // FlagEditor
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
@@ -107,9 +112,9 @@
             this.Icon = global::NHSE.WinForms.Properties.Resources.icon;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
-            this.Name = "ActivityEditor";
+            this.Name = "FlagEditor";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "Record Editor";
+            this.Text = "Flag Editor";
             ((System.ComponentModel.ISupportInitialize)(this.NUD_Count)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();

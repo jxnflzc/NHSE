@@ -17,6 +17,7 @@ namespace NHSE.WinForms
         public PlayerItemEditor(IReadOnlyList<T> array, int width, int height, bool sysbot = false)
         {
             InitializeComponent();
+            this.TranslateInterface(GameInfo.CurrentLanguage);
             Items = array;
 
             var Editor = ItemGrid = new ItemGridEditor(ItemEditor, Items) {Dock = DockStyle.Fill};
@@ -53,6 +54,18 @@ namespace NHSE.WinForms
 
         private void B_Load_Click(object sender, EventArgs e)
         {
+            if (ModifierKeys == Keys.Control && Clipboard.ContainsText())
+            {
+                var text = Clipboard.GetText();
+                var bytes = ItemCheatCode.ReadCode(text);
+                var expect = Items[0].ToBytesClass().Length;
+                if (bytes.Length % expect == 0)
+                {
+                    ImportItemData(bytes, expect);
+                    return;
+                }
+            }
+
             using var sfd = new OpenFileDialog
             {
                 Filter = "New Horizons Inventory (*.nhi)|*.nhi|All files (*.*)|*.*",
@@ -62,8 +75,13 @@ namespace NHSE.WinForms
                 return;
 
             var data = File.ReadAllBytes(sfd.FileName);
-            var import = data.GetArray<T>(Items[0].ToBytesClass().Length);
-            for (int i = 0; i < Items.Count && i < import.Length ; i++)
+            ImportItemData(data, Items[0].ToBytesClass().Length);
+        }
+
+        private void ImportItemData(byte[] data, int expect)
+        {
+            var import = data.GetArray<T>(expect);
+            for (int i = 0; i < import.Length; i++)
                 Items[i].CopyFrom(import[i]);
 
             LoadItems();

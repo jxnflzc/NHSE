@@ -14,6 +14,7 @@ namespace NHSE.WinForms
         public AcreEditor(MainSave sav)
         {
             InitializeComponent();
+            this.TranslateInterface(GameInfo.CurrentLanguage);
             SAV = sav;
 
             Acres = new[]
@@ -102,13 +103,12 @@ namespace NHSE.WinForms
             if (ofd.ShowDialog() != DialogResult.OK)
                 return;
 
+            var path = ofd.FileName;
             var original = SAV.GetAcreBytes();
-            var modified = File.ReadAllBytes(ofd.FileName);
+            var modified = File.ReadAllBytes(path);
             if (original.Length != modified.Length)
             {
-                WinFormsUtil.Error(
-                    $"Imported size (0x{modified.Length}) does not match expected size (0x{original.Length:X}).",
-                    "Aborting the import operation.");
+                WinFormsUtil.Error(string.Format(MessageStrings.MsgDataSizeMismatchImport, modified.Length, original.Length), path);
                 return;
             }
             SAV.SetAcreBytes(modified);
