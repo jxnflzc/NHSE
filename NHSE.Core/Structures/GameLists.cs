@@ -4,7 +4,16 @@ namespace NHSE.Core
 {
     public static class GameLists
     {
-        public static IReadOnlyList<ushort> Bugs = new ushort[]
+        public static readonly IReadOnlyList<ushort> Fruits = new ushort[]
+        {
+            2213, // apple
+            2287, // Cherry
+            2214, // Orange
+            2286, // Peach
+            2285, // Pear
+        };
+
+        public static readonly IReadOnlyList<ushort> Bugs = new ushort[]
         {
             00582, // brown cicada
             00583, // tiger butterfly
@@ -93,7 +102,7 @@ namespace NHSE.Core
             07374, // maple leaf
         };
 
-        public static IReadOnlyList<ushort> Fish = new ushort[]
+        public static readonly IReadOnlyList<ushort> Fish = new ushort[]
         {
             00328, // crucian carp
             00329, // goldfish
@@ -180,6 +189,208 @@ namespace NHSE.Core
             04204, // barreleye
             05254, // ranchu goldfish
             12514, // water egg
+        };
+
+        public static readonly IReadOnlyList<ushort> Fossils = new ushort[]
+        {00169, // ankylo skull
+            00170, // ankylo torso
+            00171, // ankylo tail
+            00177, // archelon skull
+            00178, // archelon tail
+            00180, // megacero skull
+            00181, // megacero torso
+            00182, // megacero tail
+            00184, // dimetrodon skull
+            00185, // dimetrodon torso
+            00188, // iguanodon skull
+            00189, // iguanodon torso
+            00190, // iguanodon tail
+            00192, // ophthalmo skull
+            00193, // ophthalmo torso
+            00195, // mammoth skull
+            00196, // mammoth torso
+            00198, // pachy skull
+            00199, // pachy tail
+            00202, // parasaur skull
+            00203, // parasaur torso
+            00204, // parasaur tail
+            00206, // ptera body
+            00207, // right ptera wing
+            00208, // left ptera wing
+            00210, // deinony torso
+            00211, // deinony tail
+            00213, // sabertooth skull
+            00214, // sabertooth tail
+            00216, // diplo skull
+            00217, // diplo neck
+            00218, // diplo chest
+            00219, // diplo pelvis
+            00220, // diplo tail
+            00222, // spino skull
+            00223, // spino torso
+            00224, // spino tail
+            00226, // stego skull
+            00227, // stego torso
+            00228, // stego tail
+            00234, // plesio skull
+            00235, // plesio body
+            00236, // plesio tail
+            00238, // T. rex skull
+            00239, // T. rex torso
+            00240, // T. rex tail
+            00242, // tricera skull
+            00243, // tricera torso
+            00244, // tricera tail
+            00294, // amber
+            00295, // ammonite
+            00296, // coprolite
+            00298, // archaeopteryx
+            00300, // dinosaur track
+            00301, // australopith
+            00302, // shark-tooth pattern
+            00303, // trilobite
+            04651, // anomalocaris
+            04658, // right megalo side
+            04659, // left megalo side
+            04660, // dunkleosteus
+            04662, // myllokunmingia
+            04663, // eusthenopteron
+            04664, // acanthostega
+            04665, // juramaia
+            04688, // brachio skull
+            04689, // brachio chest
+            04690, // brachio pelvis
+            04691, // brachio tail
+            04697, // quetzal torso
+            04698, // right quetzal wing
+            04699, // left quetzal wing
+            07251, // diplo tail tip
+        };
+
+        public static readonly IReadOnlyList<ushort> Art = new ushort[]
+        {
+            00002, // scenic painting 
+            00005, // graceful painting (forgery) 
+            00006, // graceful painting 
+            00009, // quaint painting (forgery) 
+            00010, // quaint painting 
+            00013, // basic painting (forgery) 
+            00014, // basic painting 
+            00017, // famous painting (forgery) 
+            00018, // famous painting 
+            00020, // perfect painting 
+            00023, // serene painting (forgery) 
+            00024, // serene painting 
+            00027, // wistful painting (forgery) 
+            00028, // wistful painting 
+            00031, // moving painting (forgery) 
+            00032, // moving painting 
+            00034, // warm painting 
+            00038, // dynamic painting 
+            00041, // jolly painting (forgery) 
+            00042, // jolly painting 
+            00044, // common painting 
+            00046, // proper painting 
+            00048, // nice painting 
+            00050, // flowery painting 
+            00052, // moody painting 
+            00055, // amazing painting (forgery) 
+            00056, // amazing painting 
+            00065, // scary painting (forgery) 
+            00066, // scary painting 
+            00068, // worthy painting 
+            00071, // solemn painting (forgery) 
+            00072, // solemn painting 
+            00075, // wild painting right half (forgery) 
+            00076, // wild painting right half 
+            00078, // calm painting 
+            01331, // motherly statue 
+            01332, // motherly statue (forgery) 
+            01333, // gallant statue 
+            01334, // gallant statue (forgery) 
+            01335, // robust statue 
+            01336, // robust statue (forgery) 
+            01337, // ancient statue 
+            01338, // ancient statue (forgery) 
+            01339, // great statue 
+            01341, // beautiful statue 
+            01342, // beautiful statue (forgery) 
+            01343, // mystic statue 
+            01344, // mystic statue (forgery) 
+            01345, // valiant statue 
+            01346, // valiant statue (forgery) 
+            12533, // rock-head statue  
+            12534, // rock-head statue  (forgery) 
+            12535, // informative statue 
+            12536, // informative statue (forgery) 
+            12537, // tremendous statue 
+            12538, // tremendous statue (forgery) 
+            12539, // warrior statue 
+            12540, // warrior statue (forgery) 
+            12541, // familiar statue 
+            12570, // wild painting left half 
+            12571, // wild painting left half (forgery) 
+            12618, // twinkling painting 
+            12619, // academic painting 
+            12620, // academic painting (forgery) 
+            12621, // sinking painting 
+            12622, // detailed painting 
+            12623, // detailed painting (forgery) 
+            12624, // glowing painting 
+            12625, // mysterious painting 
+            12629, // scenic painting (forgery) 
+        };
+
+        public static readonly HashSet<ushort> Shells = new HashSet<ushort>
+        {
+            1374, // sea snail
+            1375, // venus comb
+            1376, // conch
+            // 2 unused 1377, 1378
+            1379, // sand dollar
+            1380, // coral
+            1381, // giant clam
+            1382, // cowrie
+
+            5982, // summer shell
+        };
+
+        public static readonly HashSet<ushort> Terraforming = new HashSet<ushort>
+        {
+            3075, // path construction permit
+            3247, // waterscaping permit
+            8773, // stone path permit
+            8774, // brick path permit
+            8775, // dark dirt path permit
+            8776, // arched tile path permit
+            8777, // sand path permit
+            8778, // terra-cotta tile permit
+            8779, // wooden path permit
+            8780, // waterscaping permit
+            8781, // cliff construction permit
+            9771, // custom design path permit
+        };
+
+        public static readonly HashSet<ushort> NoCheckReceived = new HashSet<ushort>(Terraforming)
+        {
+            Item.DIYRecipe,
+
+            9046, // Vaulting Pole Recipe
+            9047, // Flimsy Shovel Recipe
+            9048, // Flimsy Watering Can Recipe
+            9049, // Top 8 Pop Hairstyles
+            9050, // Top 8 Cool Hairstyles
+            9051, // Top 8 Stylish Hair Colors
+
+            9221, // Pretty Good Tools Recipes
+
+            10309, // Slingshot Recipe
+
+            11140, // Ultimate Pocket Stuffing
+
+            12294, // Flimsy Axe Recipe
+
+            12327, // Ladder Recipe
         };
     }
 }

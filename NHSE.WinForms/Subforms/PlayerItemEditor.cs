@@ -8,20 +8,20 @@ using NHSE.Injection;
 
 namespace NHSE.WinForms
 {
-    public partial class PlayerItemEditor<T> : Form where T : Item
+    public partial class PlayerItemEditor : Form
     {
-        private readonly IReadOnlyList<T> Items;
         private readonly Action LoadItems;
         private readonly ItemGridEditor ItemGrid;
+        private readonly ItemArrayEditor<Item> ItemArray;
 
-        public PlayerItemEditor(IReadOnlyList<T> array, int width, int height, bool sysbot = false)
+        public PlayerItemEditor(IReadOnlyList<Item> array, int width, int height, bool sysbot = false)
         {
             InitializeComponent();
             this.TranslateInterface(GameInfo.CurrentLanguage);
-            Items = array;
+            ItemArray = new ItemArrayEditor<Item>(array);
 
-            var Editor = ItemGrid = new ItemGridEditor(ItemEditor, Items) {Dock = DockStyle.Fill};
-            Editor.InitializeGrid(width, height);
+            var Editor = ItemGrid = new ItemGridEditor(ItemEditor, array) {Dock = DockStyle.Fill};
+            Editor.InitializeGrid(width, height, 64, 64);
             PAN_Items.Controls.Add(Editor);
 
             ItemEditor.Initialize(GameInfo.Strings.ItemDataSource);
@@ -48,20 +48,21 @@ namespace NHSE.WinForms
             };
             if (sfd.ShowDialog() != DialogResult.OK)
                 return;
-            var bytes = Items.SetArray(Items[0].ToBytesClass().Length);
+            var bytes = ItemArray.Write();
             File.WriteAllBytes(sfd.FileName, bytes);
         }
 
         private void B_Load_Click(object sender, EventArgs e)
         {
-            if (ModifierKeys == Keys.Control && Clipboard.ContainsText())
+            bool skipOccupiedSlots = (ModifierKeys & Keys.Alt) != 0;
+            bool importCheatClipboard = (ModifierKeys & Keys.Control) != 0;
+            if (importCheatClipboard && Clipboard.ContainsText())
             {
                 var text = Clipboard.GetText();
                 var bytes = ItemCheatCode.ReadCode(text);
-                var expect = Items[0].ToBytesClass().Length;
-                if (bytes.Length % expect == 0)
+                if (bytes.Length % ItemArray.ItemSize == 0)
                 {
-                    ImportItemData(bytes, expect);
+                    ImportItemData(bytes, skipOccupiedSlots);
                     return;
                 }
             }
@@ -75,14 +76,12 @@ namespace NHSE.WinForms
                 return;
 
             var data = File.ReadAllBytes(sfd.FileName);
-            ImportItemData(data, Items[0].ToBytesClass().Length);
+            ImportItemData(data, skipOccupiedSlots);
         }
 
-        private void ImportItemData(byte[] data, int expect)
+        private void ImportItemData(byte[] data, bool skipOccupiedSlots, int start = 0)
         {
-            var import = data.GetArray<T>(expect);
-            for (int i = 0; i < import.Length; i++)
-                Items[i].CopyFrom(import[i]);
+            ItemArray.ImportItemDataX(data, skipOccupiedSlots, start);
 
             LoadItems();
             System.Media.SystemSounds.Asterisk.Play();
@@ -110,11 +109,14 @@ namespace NHSE.WinForms
             }
 
             var sb = new SysBotController(InjectionType.Pouch);
-            var pockInject = new PocketInjector(Items, sb.Bot);
+            var pockInject = new PocketInjector(ItemArray.Items, sb.Bot);
             var ai = new AutoInjector(pockInject, AfterRead, AfterWrite);
+            var ub = new USBBotController();
+            var pockInjectUSB = new PocketInjector(ItemArray.Items, ub.Bot);
+            var aiUSB = new AutoInjector(pockInjectUSB, AfterRead, AfterWrite);
 
-            ItemGrid.ItemChanged = () => ai.Write(true);
-            var sysbot = new SysBotUI(ai, sb);
+            ItemGrid.ItemChanged = () => ai.Write();
+            var sysbot = new SysBotUI(ai, sb, aiUSB, ub);
             sysbot.Show();
         }
     }

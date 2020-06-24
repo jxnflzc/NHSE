@@ -9,24 +9,35 @@ namespace NHSE.Core
     {
         public abstract int PersonalId { get; }
         public abstract int EventFlagsPlayer { get; }
-        public abstract int Activity { get; }
+        public abstract int CountAchievement { get; }
         public abstract int Wallet { get; }
-        public abstract int NookMiles { get; }
-        public abstract int Photo { get; }
+        public abstract int NowPoint { get; }
+        public abstract int TotalPoint { get; }
+        public abstract int Birthday { get; }
+
+        public abstract int ProfileMain { get; }
+        public abstract int ProfilePhoto { get; }
+        public abstract int ProfileBirthday { get; }
+        public abstract int ProfileFruit { get; }
+        public abstract int ProfileTimestamp { get; }
+        public abstract int ProfileIsMakeVillage { get; }
 
         public abstract int Pockets1 { get; }
         public abstract int Pockets2 { get; }
-        public abstract int Storage { get; }
-        public abstract int ReceivedItems { get; }
+        public abstract int ItemChest { get; }
+        public abstract int ItemCollectBit { get; }
+        public abstract int ItemRemakeCollectBit { get; }
+        public abstract int Manpu { get; } // reactions
 
         public abstract int Bank { get; }
         public abstract int Recipes { get; }
 
-        public int MaxActivityID { get; } = 100; // guess
+        public int MaxAchievementID { get; } = 512;
         public int Pockets1Count { get; } = 20;
         public int Pockets2Count { get; } = 20;
-        public int StorageCount { get; } = 5000;
-        public virtual int MaxRecipeID { get; } = 0x2A0;
+        public int ItemChestCount { get; } = 5000;
+        public abstract int MaxRecipeID { get; }
+        public abstract int MaxRemakeBitFlag { get; }
 
         public static PersonalOffsets GetOffsets(FileHeaderInfo Info)
         {
@@ -40,6 +51,7 @@ namespace NHSE.Core
                 4 => new PersonalOffsets11(),
                 5 => new PersonalOffsets11(),
                 6 => new PersonalOffsets12(),
+                7 => new PersonalOffsets12(),
                 _ => throw new IndexOutOfRangeException("Unknown revision!"),
             };
         }

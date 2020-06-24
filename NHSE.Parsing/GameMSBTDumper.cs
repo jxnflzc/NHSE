@@ -22,7 +22,41 @@ namespace NHSE.Parsing
                     result[i] = string.Empty;
             }
             result[0] = "(None)";
+            result[5794] = "DIY recipe";
             return result;
+        }
+
+        public static string[] GetArtList(string msgPath)
+        {
+            var file = Path.Combine(msgPath, "Item", "STR_ItemName_01_Art.msbt");
+            var pairs = GetLabelList(file).ToArray(); // (itemID, itemName)
+
+            var result = new List<string>();
+            foreach (var (Label, Text) in pairs)
+            {
+                var label = Label;
+                var underscore = label.IndexOf('_');
+                var itemIDs = label.Substring(underscore + 1);
+                ushort itemID = ushort.Parse(itemIDs);
+
+                var fake = label.Contains("Fake") ? " (forgery)" : string.Empty;
+                result.Add($"{itemID:00000}, // {Text}{fake}");
+            }
+            result.Sort();
+            return result.ToArray();
+        }
+
+        public static string[] GetVillagerListResource(string msgPath)
+        {
+            var file = Path.Combine(msgPath, "Npc", "STR_NNpcName.msbt");
+            var list = GetLabelList(file);
+            var normal = list.Select(z => $"{z.Label}\t{z.Text}").OrderBy(z => z);
+
+            file = Path.Combine(msgPath, "Npc", "STR_SNpcName.msbt");
+            list = GetLabelList(file);
+            var special = list.Select(z => $"{z.Label}\t{z.Text}").OrderBy(z => z);
+
+            return normal.Concat(special).ToArray();
         }
 
         public static Dictionary<ushort, string> GetItemList(string msgPath)
@@ -82,10 +116,16 @@ namespace NHSE.Parsing
         {
             foreach (var path in files.Where(z => z.EndsWith("msbt")))
             {
-                var msbt = new MSBT(File.ReadAllBytes(path));
-                foreach (var e in msbt.LBL1.Labels)
-                    yield return GetCleanLabelText(e, msbt.TXT2.Strings);
+                foreach (var valueTuple in GetLabelList(path))
+                    yield return valueTuple;
             }
+        }
+
+        public static IEnumerable<(string Label, string Text)> GetLabelList(string path)
+        {
+            var msbt = new MSBT(File.ReadAllBytes(path));
+            foreach (var e in msbt.LBL1.Labels)
+                yield return GetCleanLabelText(e, msbt.TXT2.Strings);
         }
 
         private static (string Label, string Text) GetCleanLabelText(MSBTLabel lbl, IList<MSBTTextString> txt)
@@ -96,6 +136,12 @@ namespace NHSE.Parsing
             var text = txt[index].ToString(Encoding.Unicode);
             if (text.StartsWith("\u000e")) // string formatting present; discard formatting!
                 text = text.Substring(6);
+
+            const char germanJunk = '\u000e';
+            int junk = text.IndexOf(germanJunk);
+            if (junk != -1) // string formatting present; discard formatting! (german)
+                text = text.Substring(0, junk);
+
             text = StringUtil.TrimFromZero(text);
 
             return (label, text);

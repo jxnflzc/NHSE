@@ -19,6 +19,16 @@ namespace NHSE.Sprites
             return GetBitmap(bg.GetPaletteBitmap(), DesignPattern.PaletteColorCount, 1, PixelFormat.Format24bppRgb);
         }
 
+        public static Bitmap GetImage(this DesignPatternPRO bg, int sheet)
+        {
+            return GetBitmap(bg.GetBitmap(sheet), DesignPatternPRO.Width, DesignPatternPRO.Height);
+        }
+
+        public static Bitmap GetPalette(this DesignPatternPRO bg)
+        {
+            return GetBitmap(bg.GetPaletteBitmap(), DesignPatternPRO.PaletteColorCount, 1, PixelFormat.Format24bppRgb);
+        }
+
         public static Bitmap GetBitmap(byte[] data, int width, int height, PixelFormat format = PixelFormat.Format32bppArgb)
         {
             var bmp = new Bitmap(width, height, format);
@@ -41,6 +51,14 @@ namespace NHSE.Sprites
             var bmpData = bmp.LockBits(new Rectangle(0, 0, bmp.Width, bmp.Height), ImageLockMode.WriteOnly, format);
             var ptr = bmpData.Scan0;
             Marshal.Copy(data, 0, ptr, data.Length);
+            bmp.UnlockBits(bmpData);
+        }
+
+        public static void GetBitmapData(Bitmap bmp, int[] data, PixelFormat format = PixelFormat.Format32bppArgb)
+        {
+            var bmpData = bmp.LockBits(new Rectangle(0, 0, bmp.Width, bmp.Height), ImageLockMode.WriteOnly, format);
+            var ptr = bmpData.Scan0;
+            Marshal.Copy(ptr, data, 0, data.Length);
             bmp.UnlockBits(bmpData);
         }
 
@@ -97,6 +115,15 @@ namespace NHSE.Sprites
                 for (int y1 = 1; y1 < scale; y1++)
                     Array.Copy(scaled, baseIndex, scaled, baseIndex + (y1 * fW), fW);
             }
+        }
+
+        /// <summary>
+        /// Sets a bitwise and of the requested transparency; this is assuming the pixel value is 0xFF_xx_xx_xx. Single operation laziness!
+        /// </summary>
+        public static void ClampAllTransparencyTo(int[] data, int trans)
+        {
+            for (int i = 0; i < data.Length; i++)
+                data[i] &= trans;
         }
     }
 }

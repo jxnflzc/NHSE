@@ -104,7 +104,7 @@
             this.GB_Inject.TabStop = false;
             this.GB_Inject.Text = "Injector";
             // 
-            // numericUpDown1
+            // NUD_Offset
             // 
             this.NUD_Offset.Location = new System.Drawing.Point(73, 39);
             this.NUD_Offset.Maximum = new decimal(new int[] {
@@ -139,7 +139,7 @@
             this.RamOffset.Name = "RamOffset";
             this.RamOffset.Size = new System.Drawing.Size(63, 20);
             this.RamOffset.TabIndex = 20;
-            this.RamOffset.Text = "AC3B90C0";
+            this.RamOffset.Text = "AC4723D0";
             // 
             // L_Offset
             // 
@@ -178,6 +178,7 @@
             this.Name = "SysBotRAMEdit";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "SysBotUI";
+            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.SysBotRAMEdit_FormClosing);
             this.GB_Inject.ResumeLayout(false);
             this.GB_Inject.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.NUD_Offset)).EndInit();

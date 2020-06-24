@@ -54,42 +54,60 @@ namespace NHSE.Core
 
         public EncryptedInt32 NookMiles
         {
-            get => EncryptedInt32.ReadVerify(Data, Offsets.NookMiles);
-            set => value.Write(Data, Offsets.NookMiles);
+            get => EncryptedInt32.ReadVerify(Data, Offsets.NowPoint);
+            set => value.Write(Data, Offsets.NowPoint);
         }
 
-        public IReadOnlyList<Item> Pocket1
+        public EncryptedInt32 TotalNookMiles
+        {
+            get => EncryptedInt32.ReadVerify(Data, Offsets.TotalPoint);
+            set => value.Write(Data, Offsets.TotalPoint);
+        }
+
+        public IReadOnlyList<Item> Bag // Slots 21-40
         {
             get => Item.GetArray(Data.Slice(Offsets.Pockets1, Offsets.Pockets1Count * Item.SIZE));
             set => Item.SetArray(value).CopyTo(Data, Offsets.Pockets1);
         }
 
-        public IReadOnlyList<Item> Pocket2
+        public uint BagCount // Count of the Bag Slots that are available for use
+        {
+            get => BitConverter.ToUInt32(Data, Offsets.Pockets1 + (Offsets.Pockets1Count * Item.SIZE));
+            set => BitConverter.GetBytes(value).CopyTo(Data, Offsets.Pockets1 + (Offsets.Pockets1Count * Item.SIZE));
+        }
+
+        public IReadOnlyList<Item> Pocket // Slots 1-20
         {
             get => Item.GetArray(Data.Slice(Offsets.Pockets2, Offsets.Pockets2Count * Item.SIZE));
             set => Item.SetArray(value).CopyTo(Data, Offsets.Pockets2);
         }
 
-        public IReadOnlyList<Item> Storage
+        public uint PocketCount // Count of the Pocket Slots that are available for use
         {
-            get => Item.GetArray(Data.Slice(Offsets.Storage, Offsets.StorageCount * Item.SIZE));
-            set => Item.SetArray(value).CopyTo(Data, Offsets.Storage);
+            get => BitConverter.ToUInt32(Data, Offsets.Pockets2 + (Offsets.Pockets2Count * Item.SIZE));
+            set => BitConverter.GetBytes(value).CopyTo(Data, Offsets.Pockets2 + (Offsets.Pockets2Count * Item.SIZE));
         }
 
-        public uint[] GetActivities()
+        public IReadOnlyList<Item> ItemChest
         {
-            var result = new uint[Offsets.MaxActivityID];
-            Buffer.BlockCopy(Data, Offsets.Activity, result, 0, sizeof(uint) * result.Length);
-            return result;
+            get => Item.GetArray(Data.Slice(Offsets.ItemChest, Offsets.ItemChestCount * Item.SIZE));
+            set => Item.SetArray(value).CopyTo(Data, Offsets.ItemChest);
         }
 
-        public void SetActivities(uint[] activities)
+        public uint ItemChestCount // Count of the Item Chest Slots that are available for use
         {
-            Buffer.BlockCopy(activities, 0, Data, Offsets.Activity, sizeof(uint) * Offsets.MaxActivityID);
+            get => BitConverter.ToUInt32(Data, Offsets.ItemChest + (Offsets.ItemChestCount * Item.SIZE));
+            set => BitConverter.GetBytes(value).CopyTo(Data, Offsets.ItemChest + (Offsets.ItemChestCount * Item.SIZE));
         }
 
-        public bool[] GetRecipeList() => ArrayUtil.GitBitFlagArray(Data, Offsets.Recipes, Offsets.MaxRecipeID + 1);
-        public void SetRecipeList(bool[] value) => ArrayUtil.SetBitFlagArray(Data, Offsets.Recipes, value);
+        public AchievementList Achievements
+        {
+            get => Data.Slice(Offsets.CountAchievement, AchievementList.SIZE).ToStructure<AchievementList>();
+            set => value.ToBytes().CopyTo(Data, Offsets.CountAchievement);
+        }
+
+        public RecipeBook GetRecipeBook() => new RecipeBook(Data.Slice(Offsets.Recipes, RecipeBook.SIZE));
+        public void SetRecipeBook(RecipeBook book) => book.Save(Data, Offsets.Recipes);
 
         public short[] GetEventFlagsPlayer()
         {
@@ -100,9 +118,17 @@ namespace NHSE.Core
 
         public void SetEventFlagsPlayer(short[] value) => Buffer.BlockCopy(value, 0, Data, Offsets.EventFlagsPlayer, value.Length * sizeof(short));
 
+        public GSaveDateMD Birthday
+        {
+            get => Data.ToStructure<GSaveDateMD>(Offsets.Birthday, GSaveDateMD.SIZE);
+            set => value.ToBytes().CopyTo(Data, Offsets.Birthday);
+        }
+
+        #region Profile
+
         public byte[] GetPhotoData()
         {
-            var offset = Offsets.Photo;
+            var offset = Offsets.ProfilePhoto;
 
             // Expect jpeg marker
             if (BitConverter.ToUInt16(Data, offset) != 0xD8FF)
@@ -110,5 +136,31 @@ namespace NHSE.Core
             var len = BitConverter.ToInt32(Data, offset - 4);
             return Data.Slice(offset, len);
         }
+
+        public GSaveDateMD ProfileBirthday
+        {
+            get => Data.ToStructure<GSaveDateMD>(Offsets.ProfileBirthday, GSaveDateMD.SIZE);
+            set => value.ToBytes().CopyTo(Data, Offsets.ProfileBirthday);
+        }
+
+        public ushort ProfileFruit
+        {
+            get => BitConverter.ToUInt16(Data, Offsets.ProfileFruit);
+            set => BitConverter.GetBytes(value).CopyTo(Data, Offsets.ProfileFruit);
+        }
+
+        public GSaveDate ProfileTimestamp
+        {
+            get => Data.ToStructure<GSaveDate>(Offsets.ProfileTimestamp, GSaveDate.SIZE);
+            set => value.ToBytes().CopyTo(Data, Offsets.ProfileTimestamp);
+        }
+
+        public bool ProfileIsMakeVillage
+        {
+            get => Data[Offsets.ProfileIsMakeVillage] != 0;
+            set => Data[Offsets.ProfileIsMakeVillage] = (byte)(value ? 1 : 0);
+        }
+
+        #endregion
     }
 }

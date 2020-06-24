@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
 using NHSE.Core;
 using NHSE.Sprites;
@@ -8,7 +10,7 @@ namespace NHSE.WinForms
 {
     public partial class ItemGridEditor : UserControl
     {
-        private static readonly ItemSpriteDrawer Sprites = SpriteUtil.Items;
+        private static readonly GridSize Sprites = new GridSize();
         private readonly ItemEditor Editor;
         private readonly IReadOnlyList<Item> Items;
 
@@ -28,8 +30,10 @@ namespace NHSE.WinForms
             L_ItemName.Text = string.Empty;
         }
 
-        public void InitializeGrid(int width, int height)
+        public void InitializeGrid(int width, int height, int itemWidth, int itemHeight)
         {
+            Sprites.Width = itemWidth;
+            Sprites.Height = itemHeight;
             ItemsPerPage = width * height;
             ItemGrid.InitializeGrid(width, height, Sprites);
             InitializeSlots();
@@ -69,14 +73,12 @@ namespace NHSE.WinForms
             var text = GetItemText(item);
             HoverTip.SetToolTip(pb, text);
             L_ItemName.Text = text;
-            pb.Image = Sprites.HoverBackground;
         }
 
         public void Slot_MouseLeave(object? sender, EventArgs e)
         {
-            if (!(sender is PictureBox pb))
+            if (!(sender is PictureBox))
                 return;
-            pb.Image = null;
             L_ItemName.Text = string.Empty;
             HoverTip.RemoveAll();
         }
@@ -123,7 +125,7 @@ namespace NHSE.WinForms
                 return;
             var index = SlotPictureBoxes.IndexOf(pb);
             var item = SetItem(index);
-            pb.BackgroundImage = Sprites.GetImage(item, L_ItemName.Font);
+            SetItemSprite(item, pb);
             ItemUpdated();
         }
 
@@ -135,7 +137,7 @@ namespace NHSE.WinForms
             var index = SlotPictureBoxes.IndexOf(pb);
             var item = GetItem(index);
             item.Delete();
-            pb.BackgroundImage = Sprites.GetImage(item, L_ItemName.Font);
+            SetItemSprite(item, pb);
             ItemUpdated();
         }
 
@@ -152,10 +154,21 @@ namespace NHSE.WinForms
                     continue;
                 var dest = GetItem(i);
                 dest.CopyFrom(item);
-                SlotPictureBoxes[i].BackgroundImage = Sprites.GetImage(item, L_ItemName.Font);
+                SetItemSprite(item, SlotPictureBoxes[i]);
                 ItemUpdated();
             }
             System.Media.SystemSounds.Asterisk.Play();
+        }
+
+        private void SetItemSprite(Item item, PictureBox pb)
+        {
+            var dw = Sprites.Width;
+            var dh = Sprites.Height;
+            var font = L_ItemName.Font;
+            pb.BackColor = ItemColor.GetItemColor(item);
+            pb.BackgroundImage = ItemSprite.GetItemSprite(item);
+            var backing = new Bitmap(dw, dh);
+            pb.Image = ItemSprite.GetItemMarkup(item, font, dw, dh, backing);
         }
 
         private int GetPageJump()
@@ -203,20 +216,45 @@ namespace NHSE.WinForms
             for (int i = 0; i < SlotPictureBoxes.Count; i++)
             {
                 var item = GetItem(i);
-                SlotPictureBoxes[i].BackgroundImage = Sprites.GetImage(item, L_ItemName.Font);
+                SetItemSprite(item, SlotPictureBoxes[i]);
             }
             ItemUpdated();
         }
 
-        private void B_Clear_Click(object sender, EventArgs e)
+        private static void ShowContextMenuBelow(ToolStripDropDown c, Control n) => c.Show(n.PointToScreen(new Point(0, n.Height)));
+        private void B_Clear_Click(object sender, EventArgs e) => ShowContextMenuBelow(CM_Remove, B_Clear);
+
+
+        private void ClearItemIf(Func<Item, bool> criteria)
         {
-            for (int i = 0; i < SlotPictureBoxes.Count; i++)
+            bool all = ModifierKeys == Keys.Shift;
+            int start = 0, end = Items.Count - 1;
+            if (!all)
             {
-                var item = GetItem(i);
-                item.Delete();
+                start = ItemsPerPage * Page;
+                end = start + ItemsPerPage;
+            }
+            for (int i = start; i < end; i++)
+            {
+                var item = Items[i];
+                if (criteria(item))
+                    item.Delete();
             }
             LoadItems();
             System.Media.SystemSounds.Asterisk.Play();
+        }
+
+        private void B_ClearAll_Click(object sender, EventArgs e) => ClearItemIf(_ => true);
+        private void B_ClearClothing_Click(object sender, EventArgs e) => ClearItemIf(z => ItemInfo.GetItemKind(z).IsClothing());
+        private void B_ClearCrafting_Click(object sender, EventArgs e) => ClearItemIf(z => ItemInfo.GetItemKind(z).IsCrafting());
+        private void B_ClearFurniture_Click(object sender, EventArgs e) => ClearItemIf(z => ItemInfo.GetItemKind(z).IsFurniture());
+        private void B_ClearBugs_Click(object sender, EventArgs e) => ClearItemIf(z => GameLists.Bugs.Contains(z.ItemId));
+        private void B_ClearFish_Click(object sender, EventArgs e) => ClearItemIf(z => GameLists.Fish.Contains(z.ItemId));
+
+        private class GridSize : IGridItem
+        {
+            public int Width { get; set; } = 64;
+            public int Height { get; set; } = 64;
         }
     }
 }

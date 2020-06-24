@@ -3,20 +3,21 @@
 
 namespace NHSE.Core
 {
-    public class EventFlagPlayer
+    public class EventFlagPlayer : INamedValue
     {
-        public readonly short Value1;
-        public readonly short Value2;
+        // these are actually unsigned
+        public readonly short DefaultValue;
+        public readonly short MaxValue;
 
-        public readonly ushort Index;
-        public readonly string Name;
+        public ushort Index { get; }
+        public string Name { get; }
 
-        public EventFlagPlayer(short v1, short v2, ushort index, string name)
+        public EventFlagPlayer(short init, short max, ushort index, string name)
         {
             Name = name;
             Index = index;
-            Value1 = v1;
-            Value2 = v2;
+            DefaultValue = init;
+            MaxValue = max;
         }
 
         public static readonly IReadOnlyDictionary<ushort, EventFlagPlayer> List = new Dictionary<ushort, EventFlagPlayer>
@@ -879,12 +880,25 @@ namespace NHSE.Core
 
         private const string Unknown = "???";
 
-        public static string GetFlagName(ushort index, short count)
+        public static string GetName(ushort index, short count, IReadOnlyDictionary<string, string> str)
         {
             var dict = List;
             if (dict.TryGetValue(index, out var val))
-                return $"{index:000} - {val.Name} = {count}";
-            return $"{index:000} - {Unknown} = {count}";
+            {
+                string name = val.Name;
+                if (str.TryGetValue(name, out var translated))
+                    name = translated;
+                return $"{index:00} - {name} = {count}";
+            }
+            return $"{index:00} - {Unknown} = {count}";
+        }
+
+        public static string GetName(ushort index, short count)
+        {
+            var dict = List;
+            if (dict.TryGetValue(index, out var val))
+                return $"{index:00} - {val.Name} = {count}";
+            return $"{index:00} - {Unknown} = {count}";
         }
     }
 }

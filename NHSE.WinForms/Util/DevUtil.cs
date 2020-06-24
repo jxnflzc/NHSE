@@ -1,15 +1,17 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using NHSE.Core;
+using NHSE.WinForms.Properties;
 
 namespace NHSE.WinForms
 {
 #if DEBUG
     public static class DevUtil
     {
-        private static readonly string[] Languages = { "jp", "zh" };
+        private static readonly string[] Languages = { "jp", "de", "es", "fr", "it", "ko", "zhs", "zht" };
         private const string DefaultLanguage = GameLanguage.DefaultLanguage;
 
         public static bool IsUpdatingTranslations { get; private set; }
@@ -24,11 +26,13 @@ namespace NHSE.WinForms
             IsUpdatingTranslations = true;
             DumpStringsMessage();
             UpdateTranslations();
+            UpdateInternalNameTranslations();
             IsUpdatingTranslations = false;
         }
 
         private static void UpdateTranslations()
         {
+            WinFormsTranslator.LoadSpecialForms = LoadSpecialForms;
             WinFormsTranslator.SetRemovalMode(false); // add mode
             WinFormsTranslator.LoadAllForms(LoadBanlist); // populate with every possible control
             WinFormsTranslator.UpdateAll(DefaultLanguage, Languages); // propagate to others
@@ -57,9 +61,19 @@ namespace NHSE.WinForms
             Application.Exit();
         }
 
+        private static void LoadSpecialForms()
+        {
+            // For forms that require more complete initialization (dynamically added user controls)
+            var path = Settings.Default.LastFilePath;
+            var sav = new HorizonSave(path);
+            using var editor = new Editor(sav);
+            using var so = new SingleObjectEditor<object>(new object(), PropertySort.NoSort, false);
+        }
+
         private static readonly string[] LoadBanlist =
         {
             nameof(SettingsEditor),
+            nameof(Editor), // special handling above
         };
 
         private static readonly string[] Banlist =
@@ -70,6 +84,10 @@ namespace NHSE.WinForms
             "AcreEditor.L_X",
             "AcreEditor.L_Y",
             "L_Coordinates",
+            "L_PatternName=",
+            "L_RemakeBody=",
+            "L_RemakeFabric=",
+            "AchievementEditor.L_Threshold",
         };
 
         private static readonly string[] PurgeBanlist =
@@ -77,12 +95,46 @@ namespace NHSE.WinForms
             nameof(SettingsEditor),
         };
 
+        private static void UpdateInternalNameTranslations()
+        {
+            var langs = new[] { DefaultLanguage }.Concat(Languages);
+            var available = new[]
+            {
+                LifeSupportAchievement.List.Values.Select(z => z.Name),
+                EventFlagPlayer.List.Values.Select(z => z.Name),
+                EventFlagLand.List.Values.Select(z => z.Name),
+                EventFlagVillager.List.Values.Select(z => z.Name),
+            }.SelectMany(z => z);
+
+            var translatables = new HashSet<string>(available);
+            foreach (var lang in langs)
+            {
+                var str = GameInfo.GetStrings(lang);
+                var dict = str.InternalNameTranslation;
+
+                var oldKeys = dict
+                    .Where(kvp => translatables.Contains(kvp.Key));
+                var newKeys = translatables
+                    .Where(key => !dict.ContainsKey(key))
+                    .Select(z => new KeyValuePair<string, string>(z, z));
+
+                var allKeys = oldKeys.Concat(newKeys);
+
+                var newDict = allKeys.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+                var result = newDict.Select(z => $"{z.Key}={z.Value}");
+                var dir = GetResourcePath();
+                var location = GetFileLocationInText("internal", dir, lang);
+                File.WriteAllLines(location, result);
+            }
+        }
+
         private static void DumpStringsMessage() => DumpStrings(typeof(MessageStrings));
 
         private static void DumpStrings(Type t)
         {
-            var dir = GetResourcePath();
             var langs = new[] { DefaultLanguage }.Concat(Languages);
+            var dir = GetResourcePath();
             foreach (var lang in langs)
             {
                 TranslationUtil.SetLocalization(t, lang);

@@ -56,6 +56,21 @@ namespace NHSE.Core
         /// <summary>
         /// Dumps all villager houses to the requested <see cref="path"/>.
         /// </summary>
+        /// <param name="houses"></param>
+        /// <param name="players"></param>
+        /// <param name="path">Path to dump to</param>
+        public static void DumpPlayerHouses(this IReadOnlyList<PlayerHouse> houses, IReadOnlyList<Player> players, string path)
+        {
+            for (int i = 0; i < houses.Count; i++)
+            {
+                var filename = i < players.Count ? players[i].Personal.PlayerName : $"House {i}";
+                houses[i].Dump(filename, path);
+            }
+        }
+
+        /// <summary>
+        /// Dumps all villager houses to the requested <see cref="path"/>.
+        /// </summary>
         /// <param name="sav">Save Data to dump from</param>
         /// <param name="path">Path to dump to</param>
         public static void DumpPlayerHouses(this HorizonSave sav, string path)
@@ -69,11 +84,12 @@ namespace NHSE.Core
             }
         }
 
-        private static void Dump(this PlayerHouse h, string path, Personal p)
+        private static void Dump(this PlayerHouse h, string path, IVillagerOrigin p) => h.Dump(p.PlayerName, path);
+
+        private static void Dump(this PlayerHouse h, string player, string path)
         {
-            var name = GameInfo.Strings.GetVillager(p.PlayerName);
-            var dest = Path.Combine(path, $"{name}.nhph");
-            var data = h.ToBytesClass();
+            var dest = Path.Combine(path, $"{player}.nhph");
+            var data = h.Data;
             File.WriteAllBytes(dest, data);
         }
 
@@ -96,7 +112,7 @@ namespace NHSE.Core
         {
             var name = GameInfo.Strings.GetVillager(v.InternalName);
             var dest = Path.Combine(path, $"{name}.nhvh");
-            var data = h.ToBytesClass();
+            var data = h.Data;
             File.WriteAllBytes(dest, data);
         }
 
@@ -105,13 +121,13 @@ namespace NHSE.Core
         /// </summary>
         /// <param name="villagers">Data to dump from</param>
         /// <param name="path">Path to dump to</param>
-        public static void DumpVillagers(this IEnumerable<Villager> villagers, string path)
+        public static void Dump(this IEnumerable<Villager> villagers, string path)
         {
             foreach (var v in villagers)
-                v.DumpVillager(path);
+                v.Dump(path);
         }
 
-        private static void DumpVillager(this Villager v, string path)
+        private static void Dump(this Villager v, string path)
         {
             var name = GameInfo.Strings.GetVillager(v.InternalName);
             var dest = Path.Combine(path, $"{name}.nhv");
@@ -125,14 +141,57 @@ namespace NHSE.Core
         /// <param name="path">Path to dump to</param>
         public static void DumpDesigns(this MainSave sav, string path)
         {
-            for (int i = 0; i < 50; i++)
-            {
-                var dp = sav.GetDesign(i);
-                var name = dp.DesignName;
-                var fn = StringUtil.CleanFileName($"{name}.nhd");
-                var dest = Path.Combine(path, fn);
-                File.WriteAllBytes(dest, dp.Data);
-            }
+            for (int i = 0; i < MainSaveOffsets.PatternCount; i++)
+                sav.GetDesign(i).Dump(path);
+        }
+
+        /// <summary>
+        /// Dumps all designs to the requested <see cref="path"/>.
+        /// </summary>
+        /// <param name="patterns">Patterns to dump</param>
+        /// <param name="path">Path to dump to</param>
+        public static void Dump(this IEnumerable<DesignPattern> patterns, string path)
+        {
+            foreach (var dp in patterns)
+                dp.Dump(path);
+        }
+
+        private static void Dump(this DesignPattern dp, string path)
+        {
+            var name = dp.DesignName;
+            var fn = StringUtil.CleanFileName($"{name}.nhd");
+            var dest = Path.Combine(path, fn);
+            File.WriteAllBytes(dest, dp.Data);
+        }
+
+        /// <summary>
+        /// Dumps all designs to the requested <see cref="path"/>.
+        /// </summary>
+        /// <param name="sav">Save Data to dump from</param>
+        /// <param name="path">Path to dump to</param>
+        public static void DumpDesignsPRO(this MainSave sav, string path)
+        {
+            for (int i = 0; i < MainSaveOffsets.PatternCount; i++)
+                sav.GetDesignPRO(i).Dump(path);
+        }
+
+        /// <summary>
+        /// Dumps all designs to the requested <see cref="path"/>.
+        /// </summary>
+        /// <param name="patterns">Patterns to dump</param>
+        /// <param name="path">Path to dump to</param>
+        public static void Dump(this IEnumerable<DesignPatternPRO> patterns, string path)
+        {
+            foreach (var dp in patterns)
+                dp.Dump(path);
+        }
+
+        private static void Dump(this DesignPatternPRO dp, string path)
+        {
+            var name = dp.DesignName;
+            var fn = StringUtil.CleanFileName($"{name}.nhpd");
+            var dest = Path.Combine(path, fn);
+            File.WriteAllBytes(dest, dp.Data);
         }
     }
 }

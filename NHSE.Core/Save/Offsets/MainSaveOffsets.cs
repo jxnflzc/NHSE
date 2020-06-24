@@ -8,29 +8,40 @@ namespace NHSE.Core
     public abstract class MainSaveOffsets
     {
         public const int PlayerCount = 8;
-
-        public abstract int Villager { get; }
-        public const int VillagerSize = 0x12AB0;
         public const int VillagerCount = 10;
-
-        public abstract int Patterns { get; }
         public const int PatternCount = 50;
-
-        public abstract int Buildings { get; }
+        public const int PatternTailorCount = 8;
         public const int BuildingCount = 46;
-
-        public abstract int RecycleBin { get; }
         public const int RecycleBinCount = 40;
 
-        public abstract int TurnipExchange { get; }
+        public abstract int Animal { get; }
+
+        public abstract int LandMyDesign { get; }
+        public abstract int PatternsPRO { get; }
+        public abstract int PatternFlag { get; }
+        public abstract int PatternTailor { get; }
+
+        public abstract int WeatherArea { get; }
+        public abstract int WeatherRandSeed { get; }
+
+        public abstract int MainFieldStructure { get; }
 
         public abstract int EventFlagLand { get; }
         public abstract int FieldItem { get; }
-        public abstract int Acres { get; }
-        public abstract int Terrain { get; }
+        public abstract int LandMakingMap { get; }
+        public abstract int OutsideField { get; }
+        public abstract int MyDesignMap { get; }
         public abstract int PlayerHouseList { get; }
         public abstract int NpcHouseList { get; }
+        public abstract int ShopKabu { get; }
+        public abstract int Museum { get; }
+        public abstract int Visitor { get; }
 
+        public abstract int SaveFg { get; }
+        public abstract int BulletinBoard { get; }
+        public abstract int AirportThemeColor { get; }
+
+        public abstract int LostItemBox { get; }
         public abstract int LastSavedTime { get; }
 
         public static MainSaveOffsets GetOffsets(FileHeaderInfo Info)
@@ -45,6 +56,7 @@ namespace NHSE.Core
                 4 => new MainSaveOffsets11(),
                 5 => new MainSaveOffsets11(),
                 6 => new MainSaveOffsets12(),
+                7 => new MainSaveOffsets12(),
                 _ => throw new IndexOutOfRangeException("Unknown revision!"),
             };
         }
@@ -53,7 +65,12 @@ namespace NHSE.Core
         {
             if ((uint)index >= PatternCount)
                 throw new ArgumentOutOfRangeException(nameof(index));
-            var v = data.Slice(Patterns + (index * DesignPattern.SIZE), DesignPattern.SIZE);
+            return ReadPatternAtOffset(data, LandMyDesign + (index * DesignPattern.SIZE));
+        }
+
+        public static DesignPattern ReadPatternAtOffset(byte[] data, int offset)
+        {
+            var v = data.Slice(offset, DesignPattern.SIZE);
             return new DesignPattern(v);
         }
 
@@ -61,14 +78,35 @@ namespace NHSE.Core
         {
             if ((uint)index >= PatternCount)
                 throw new ArgumentOutOfRangeException(nameof(index));
-            p.Data.CopyTo(data, Patterns + (index * DesignPattern.SIZE));
+            p.Data.CopyTo(data, LandMyDesign + (index * DesignPattern.SIZE));
+        }
+
+        public DesignPatternPRO ReadPatternPRO(byte[] data, int index)
+        {
+            if ((uint)index >= PatternCount)
+                throw new ArgumentOutOfRangeException(nameof(index));
+            var ofs = PatternsPRO + (index * DesignPatternPRO.SIZE);
+            return ReadPatternPROAtOffset(data, ofs);
+        }
+
+        public static DesignPatternPRO ReadPatternPROAtOffset(byte[] data, int ofs)
+        {
+            var v = data.Slice(ofs, DesignPatternPRO.SIZE);
+            return new DesignPatternPRO(v);
+        }
+
+        public void WritePatternPRO(DesignPatternPRO p, byte[] data, int index)
+        {
+            if ((uint)index >= PatternCount)
+                throw new ArgumentOutOfRangeException(nameof(index));
+            p.Data.CopyTo(data, PatternsPRO + (index * DesignPatternPRO.SIZE));
         }
 
         public Villager ReadVillager(byte[] data, int index)
         {
             if ((uint)index >= VillagerCount)
                 throw new ArgumentOutOfRangeException(nameof(index));
-            var v = data.Slice(Villager + (index * VillagerSize), VillagerSize);
+            var v = data.Slice(Animal + (index * Villager.SIZE), Villager.SIZE);
             return new Villager(v);
         }
 
@@ -76,7 +114,7 @@ namespace NHSE.Core
         {
             if ((uint)index >= VillagerCount)
                 throw new ArgumentOutOfRangeException(nameof(index));
-            v.Data.CopyTo(data, Villager + (index * VillagerSize));
+            v.Data.CopyTo(data, Animal + (index * Villager.SIZE));
         }
     }
 }

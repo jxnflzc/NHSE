@@ -15,6 +15,8 @@ namespace NHSE.WinForms
         private static string GetTranslationFileNameInternal(string lang) => $"lang_{lang}";
         private static string GetTranslationFileNameExternal(string lang) => $"lang_{lang}.txt";
 
+        internal static Action LoadSpecialForms = () => { };
+
         private static TranslationContext GetContext(string lang)
         {
             if (Context.TryGetValue(lang, out var context))
@@ -173,6 +175,8 @@ namespace NHSE.WinForms
 
         public static void LoadAllForms(params string[] banlist)
         {
+            LoadSpecialForms();
+
             var q = from t in System.Reflection.Assembly.GetExecutingAssembly().GetTypes()
                     where t.BaseType == typeof(Form) && !banlist.Contains(t.Name)
                     select t;
@@ -232,9 +236,22 @@ namespace NHSE.WinForms
 
         public TranslationContext(IEnumerable<string> content, char separator = Separator)
         {
-            var entries = content.Select(z => z.Split(separator)).Where(z => z.Length == 2);
-            foreach (var kvp in entries.Where(z => !Translation.ContainsKey(z[0])))
-                Translation.Add(kvp[0], kvp[1]);
+            var entries = GetContent(content, separator);
+            foreach (var kvp in entries.Where(z => !Translation.ContainsKey(z.Key)))
+                Translation.Add(kvp.Key, kvp.Value);
+        }
+
+        private static IEnumerable<KeyValuePair<string, string>> GetContent(IEnumerable<string> content, char separator)
+        {
+            foreach (var line in content)
+            {
+                var index = line.IndexOf(separator);
+                if (index < 0)
+                    continue;
+                var key = line.Substring(0, index);
+                var value = line.Substring(index + 1);
+                yield return new KeyValuePair<string, string>(key, value);
+            }
         }
 
         public string GetTranslatedText(string val, string fallback)

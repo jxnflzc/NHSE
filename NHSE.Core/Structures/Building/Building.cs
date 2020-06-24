@@ -1,11 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
 namespace NHSE.Core
 {
+    /// <summary>
+    /// Interact-able structure that can be entered by the player.
+    /// </summary>
     [StructLayout(LayoutKind.Explicit, Size = SIZE, Pack = 1)]
-    public class Building : INamedObject
+    public class Building
     {
         public const int SIZE = 0x14;
 
@@ -47,7 +49,6 @@ namespace NHSE.Core
 
         public static Building[] GetArray(byte[] data) => data.GetArray<Building>(SIZE);
         public static byte[] SetArray(IReadOnlyList<Building> data) => data.SetArray(SIZE);
-        public override string ToString() => ToString(Array.Empty<string>());
-        public string ToString(IReadOnlyList<string> names) => $"{X:000},{Y:000} - {BuildingType}";
+        public override string ToString() => $"{X:000},{Y:000} - {BuildingType}";
     }
 }

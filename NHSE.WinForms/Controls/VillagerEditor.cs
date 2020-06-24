@@ -16,10 +16,10 @@ namespace NHSE.WinForms
 
         public VillagerEditor(Villager[] villagers, IVillagerOrigin origin, MainSave sav, bool hasHouses)
         {
+            InitializeComponent();
             Villagers = villagers;
             Origin = origin;
             SAV = sav;
-            InitializeComponent();
             LoadVillagers();
 
             B_EditHouses.Visible = hasHouses;
@@ -96,7 +96,7 @@ namespace NHSE.WinForms
                 var dir = Path.GetDirectoryName(fbd.SelectedPath);
                 if (dir == null || !Directory.Exists(dir))
                     return;
-                Villagers.DumpVillagers(fbd.SelectedPath);
+                Villagers.Dump(fbd.SelectedPath);
                 return;
             }
 
@@ -151,13 +151,22 @@ namespace NHSE.WinForms
             LoadVillager(Villagers[VillagerIndex] = v);
         }
 
+        private void B_EditWear_Click(object sender, EventArgs e)
+        {
+            var v = Villagers[VillagerIndex];
+            var items = v.WearStockList;
+            using var editor = new PlayerItemEditor(items, 8, 3);
+            if (editor.ShowDialog() == DialogResult.OK)
+                v.WearStockList = items;
+        }
+
         private void B_EditFurniture_Click(object sender, EventArgs e)
         {
             var v = Villagers[VillagerIndex];
-            var items = v.Furniture;
-            using var editor = new PlayerItemEditor<VillagerItem>(items, 8, 2);
+            var items = v.FtrStockList;
+            using var editor = new PlayerItemEditor(items, 8, 4);
             if (editor.ShowDialog() == DialogResult.OK)
-                v.Furniture = items;
+                v.FtrStockList = items;
         }
 
         private void B_EditVillagerFlags_Click(object sender, EventArgs e)
@@ -181,11 +190,51 @@ namespace NHSE.WinForms
 
         private void B_EditHouse_Click(object sender, EventArgs e)
         {
+            SaveVillager(VillagerIndex);
             var villagers = SAV.GetVillagers();
             var houses = SAV.GetVillagerHouses();
             using var editor = new VillagerHouseEditor(houses, villagers, SAV, VillagerIndex);
             if (editor.ShowDialog() == DialogResult.OK)
                 SAV.SetVillagerHouses(houses);
+        }
+
+        private static void ShowContextMenuBelow(ToolStripDropDown c, Control n) => c.Show(n.PointToScreen(new System.Drawing.Point(0, n.Height)));
+        private void B_EditVillager_Click(object sender, EventArgs e) => ShowContextMenuBelow(CM_EditVillager, B_EditVillager);
+
+        private void B_EditVillagerRoom_Click(object sender, EventArgs e)
+        {
+            var v = Villagers[VillagerIndex];
+            using var editor = new SaveRoomFloorWallEditor(v.Room);
+            if (editor.ShowDialog() == DialogResult.OK)
+                v.Room = editor.Entity;
+        }
+
+        private void B_EditVillagerDesign_Click(object sender, EventArgs e)
+        {
+            var v = Villagers[VillagerIndex];
+            var tmp = new[] {v.Design};
+            using var editor = new PatternEditorPRO(tmp);
+            if (editor.ShowDialog() == DialogResult.OK)
+                v.Design = tmp[0];
+        }
+
+        private void B_EditVillagerPlayerMemories_Click(object sender, EventArgs e)
+        {
+            if (ModifierKeys == Keys.Shift)
+            {
+                var prompt = WinFormsUtil.Prompt(MessageBoxButtons.YesNo, MessageStrings.MsgVillagerFriendshipMax);
+                if (prompt != DialogResult.Yes)
+                    return;
+                foreach (var villager in Villagers)
+                    villager.SetFriendshipAll();
+                System.Media.SystemSounds.Asterisk.Play();
+                return;
+            }
+
+            var v = Villagers[VillagerIndex];
+            using var editor = new VillagerMemoryEditor(v);
+            if (editor.ShowDialog() == DialogResult.OK)
+            { } // editor saves our changes
         }
     }
 }

@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows.Forms;
 using NHSE.Core;
 using NHSE.Injection;
+using NHSE.Sprites;
 using NHSE.WinForms.Properties;
 
 namespace NHSE.WinForms
@@ -13,8 +14,10 @@ namespace NHSE.WinForms
     public partial class Main : Form
     {
         public const string BackupFolderName = "bak";
+        public const string ItemFolderName = "items";
         public static readonly string WorkingDirectory = Application.StartupPath;
         public static readonly string BackupPath = Path.Combine(WorkingDirectory, BackupFolderName);
+        public static readonly string ItemPath = Path.Combine(WorkingDirectory, ItemFolderName);
 
         public Main()
         {
@@ -174,10 +177,11 @@ namespace NHSE.WinForms
                 }
                 case Keys.I:
                 {
+                    ItemSprite.Initialize(ItemPath, GameInfo.GetStrings("en").itemlist);
                     var items = new Item[40];
                     for (int i = 0; i < items.Length; i++)
                         items[i] = new Item(Item.NONE);
-                    using var editor = new PlayerItemEditor<Item>(items, 10, 4, true);
+                    using var editor = new PlayerItemEditor(items, 10, 4, true);
                     editor.ShowDialog();
                     break;
                 }

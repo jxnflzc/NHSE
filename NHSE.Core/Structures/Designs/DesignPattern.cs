@@ -2,6 +2,9 @@
 
 namespace NHSE.Core
 {
+    /// <summary>
+    /// Simple design pattern
+    /// </summary>
     public class DesignPattern : IVillagerOrigin
     {
         public const int Width = 32;
@@ -19,6 +22,18 @@ namespace NHSE.Core
         public readonly byte[] Data;
 
         public DesignPattern(byte[] data) => Data = data;
+
+        public uint Hash
+        {
+            get => BitConverter.ToUInt32(Data, 0x00);
+            set => BitConverter.GetBytes(value).CopyTo(Data, 0x00);
+        }
+
+        public uint Version
+        {
+            get => BitConverter.ToUInt32(Data, 0x04);
+            set => BitConverter.GetBytes(value).CopyTo(Data, 0x04);
+        }
 
         public string DesignName
         {

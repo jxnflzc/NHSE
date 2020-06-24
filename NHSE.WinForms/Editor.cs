@@ -3,10 +3,12 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using NHSE.Core;
 using NHSE.Injection;
 using NHSE.Sprites;
+using NHSE.WinForms.Properties;
 
 namespace NHSE.WinForms
 {
@@ -19,14 +21,17 @@ namespace NHSE.WinForms
         {
             InitializeComponent();
 
-            Menu_Language.SelectedIndex = 0; // en -- triggers translation
-            // this.TranslateInterface(GameInfo.CurrentLanguage);
-
             SAV = file;
 
             LoadPlayers();
-            LoadMain();
             Villagers = LoadVillagers();
+
+            LoadMain();
+
+            var lang = Settings.Default.Language;
+            var index = GameLanguage.GetLanguageIndex(lang);
+            Menu_Language.SelectedIndex = index; // triggers translation
+            // this.TranslateInterface(GameInfo.CurrentLanguage);
 
             Text = SAV.GetSaveTitle("NHSE");
         }
@@ -42,8 +47,19 @@ namespace NHSE.WinForms
             Menu_Options.DropDown.Close();
             if ((uint)Menu_Language.SelectedIndex >= GameLanguage.LanguageCount)
                 return;
-            GameInfo.SetLanguage2Char(Menu_Language.SelectedIndex);
-            this.TranslateInterface(GameInfo.CurrentLanguage);
+            var lang = GameInfo.SetLanguage2Char(Menu_Language.SelectedIndex);
+
+            this.TranslateInterface(lang);
+            var settings = Settings.Default;
+            settings.Language = lang;
+            settings.Save();
+
+            Task.Run(() =>
+            {
+                ItemSprite.Initialize(Main.ItemPath, GameInfo.GetStrings("en").itemlist);
+                TranslationUtil.SetLocalization(typeof(MessageStrings), lang);
+                TranslationUtil.SetLocalization(GameInfo.Strings.InternalNameTranslation, lang);
+            });
         }
 
         private void Menu_Save_Click(object sender, EventArgs e)
@@ -133,7 +149,6 @@ namespace NHSE.WinForms
             Villagers.Villagers = SAV.Main.GetVillagers();
             Villagers.Origin = SAV.Players[0].Personal;
             LoadPlayers();
-            LoadMain();
         }
 
         private VillagerEditor LoadVillagers()
@@ -150,6 +165,30 @@ namespace NHSE.WinForms
             SavePlayer(PlayerIndex);
             Villagers.Save();
             SAV.Main.SetVillagers(Villagers.Villagers);
+            SaveMain();
+        }
+
+        private void LoadMain()
+        {
+            var m = SAV.Main;
+            var names = Enum.GetNames(typeof(Hemisphere));
+            foreach (var n in names)
+                CB_Hemisphere.Items.Add(n);
+            CB_Hemisphere.SelectedIndex = (int)m.Hemisphere;
+
+            names = Enum.GetNames(typeof(AirportColor));
+            foreach (var n in names)
+                CB_AirportColor.Items.Add(n);
+            CB_AirportColor.SelectedIndex = (int)m.AirportThemeColor;
+            NUD_WeatherSeed.Value = m.WeatherSeed;
+        }
+
+        private void SaveMain()
+        {
+            var m = SAV.Main;
+            m.Hemisphere = (Hemisphere)CB_Hemisphere.SelectedIndex;
+            m.AirportThemeColor = (AirportColor)CB_AirportColor.SelectedIndex;
+            m.WeatherSeed = (uint)NUD_WeatherSeed.Value;
         }
 
         #region Player Editing
@@ -162,32 +201,25 @@ namespace NHSE.WinForms
 
             PlayerIndex = -1;
             CB_Players.SelectedIndex = 0;
-            NUD_PlayerHouse.Maximum = CB_Players.Items.Count;
-        }
-
-        private void LoadMain()
-        {
-            LoadPattern(0);
         }
 
         private int PlayerIndex = -1;
         private void LoadPlayer(object sender, EventArgs e) => LoadPlayer(CB_Players.SelectedIndex);
-        private void LoadPattern(object sender, EventArgs e) => LoadPattern((int)NUD_PatternIndex.Value - 1);
 
         private void B_EditPlayerItems_Click(object sender, EventArgs e)
         {
             var player = SAV.Players[PlayerIndex];
             {
                 var pers = player.Personal;
-                var p1 = pers.Pocket1;
-                var p2 = pers.Pocket2;
-                var items = p2.Concat(p1).ToArray();
-                using var editor = new PlayerItemEditor<Item>(items, 10, 4, sysbot: true);
+                var bag = pers.Bag;
+                var pocket = pers.Pocket;
+                var items = pocket.Concat(bag).ToArray();
+                using var editor = new PlayerItemEditor(items, 10, 4, sysbot: true);
                 if (editor.ShowDialog() != DialogResult.OK)
                     return;
 
-                pers.Pocket2 = items.Take(p2.Count).ToArray();
-                pers.Pocket1 = items.Skip(p2.Count).Take(p1.Count).ToArray();
+                pers.Pocket = items.Take(pocket.Count).ToArray();
+                pers.Bag = items.Skip(pocket.Count).Take(bag.Count).ToArray();
             }
         }
 
@@ -195,16 +227,16 @@ namespace NHSE.WinForms
         {
             var player = SAV.Players[PlayerIndex];
             var pers = player.Personal;
-            var p1 = pers.Storage;
-            using var editor = new PlayerItemEditor<Item>(p1, 10, 5);
+            var p1 = pers.ItemChest;
+            using var editor = new PlayerItemEditor(p1, 10, 5);
             if (editor.ShowDialog() == DialogResult.OK)
-                pers.Storage = p1;
+                pers.ItemChest = p1;
         }
 
         private void B_RecycleBin_Click(object sender, EventArgs e)
         {
             var items = SAV.Main.RecycleBin;
-            using var editor = new PlayerItemEditor<Item>(items, 10, 4);
+            using var editor = new PlayerItemEditor(items, 10, 4);
             if (editor.ShowDialog() == DialogResult.OK)
                 SAV.Main.RecycleBin = items;
         }
@@ -223,6 +255,20 @@ namespace NHSE.WinForms
             editor.ShowDialog();
         }
 
+        private void B_EditPlayerReactions_Click(object sender, EventArgs e)
+        {
+            var player = SAV.Players[PlayerIndex].Personal;
+            using var editor = new ReactionEditor(player);
+            editor.ShowDialog();
+        }
+
+        private void B_EditPlayerMisc_Click(object sender, EventArgs e)
+        {
+            var player = SAV.Players[PlayerIndex];
+            using var editor = new MiscPlayerEditor(player);
+            editor.ShowDialog();
+        }
+
         private void LoadPlayer(int index)
         {
             if (PlayerIndex >= 0)
@@ -238,11 +284,25 @@ namespace NHSE.WinForms
             TB_TownName.Text = pers.TownName;
             NUD_BankBells.Value = Math.Min(int.MaxValue, pers.Bank.Value);
             NUD_NookMiles.Value = Math.Min(int.MaxValue, pers.NookMiles.Value);
+            NUD_TotalNookMiles.Value = Math.Min(int.MaxValue, pers.TotalNookMiles.Value);
             NUD_Wallet.Value = Math.Min(int.MaxValue, pers.Wallet.Value);
 
-            var photo = pers.GetPhotoData();
-            var bmp = new Bitmap(new MemoryStream(photo));
-            PB_Player.Image = bmp;
+            // swapped on purpose -- first count is the first two rows of items
+            NUD_PocketCount1.Value = Math.Min(int.MaxValue, pers.PocketCount);
+            NUD_PocketCount2.Value = Math.Min(int.MaxValue, pers.BagCount);
+            NUD_StorageCount.Value = Math.Min(int.MaxValue, pers.ItemChestCount);
+
+            try
+            {
+                var photo = pers.GetPhotoData();
+                PB_Player.Image = new Bitmap(new MemoryStream(photo));
+            }
+#pragma warning disable CA1031 // Do not catch general exception types
+            catch (Exception e)
+#pragma warning restore CA1031 // Do not catch general exception types
+            {
+                Console.WriteLine(e);
+            }
 
             PlayerIndex = index;
         }
@@ -278,18 +338,26 @@ namespace NHSE.WinForms
             nook.Value = (uint)NUD_NookMiles.Value;
             pers.NookMiles = nook;
 
+            var tnook = pers.TotalNookMiles;
+            tnook.Value = (uint)NUD_TotalNookMiles.Value;
+            pers.TotalNookMiles = tnook;
+
             var wallet = pers.Wallet;
             wallet.Value = (uint)NUD_Wallet.Value;
             pers.Wallet = wallet;
+
+            // swapped on purpose -- first count is the first two rows of items
+            pers.PocketCount = (uint)NUD_PocketCount1.Value;
+            pers.BagCount = (uint)NUD_PocketCount2.Value;
+
+            pers.ItemChestCount = (uint)NUD_StorageCount.Value;
         }
 
         private void B_EditAchievements_Click(object sender, EventArgs e)
         {
             var pers = SAV.Players[PlayerIndex].Personal;
-            var records = pers.GetActivities();
-            using var editor = new AchievementEditor(records);
-            if (editor.ShowDialog() == DialogResult.OK)
-                pers.SetActivities(records);
+            using var editor = new AchievementEditor(pers);
+            editor.ShowDialog();
         }
 
         private void B_EditPlayerFlags_Click(object sender, EventArgs e)
@@ -303,28 +371,6 @@ namespace NHSE.WinForms
 
         #endregion
 
-        #region Patterns
-
-        private int PatternIndex = -1;
-
-        private void LoadPattern(int index)
-        {
-            var pattern = SAV.Main.GetDesign(index);
-            LoadPattern(pattern);
-            PatternIndex = index;
-        }
-
-        private void LoadPattern(DesignPattern designPattern)
-        {
-            PB_Pattern.Image = ImageUtil.ResizeImage(designPattern.GetImage(), 128, 128);
-            PB_Palette.Image = ImageUtil.ResizeImage(designPattern.GetPalette(), 150, 10);
-            L_PatternName.Text = designPattern.DesignName + Environment.NewLine +
-                                 designPattern.TownName + Environment.NewLine +
-                                 designPattern.PlayerName;
-        }
-
-        #endregion
-
         private void Menu_SavePNG_Click(object sender, EventArgs e)
         {
             var pb = WinFormsUtil.GetUnderlyingControl<PictureBox>(sender);
@@ -334,12 +380,7 @@ namespace NHSE.WinForms
                 return;
             }
 
-            string name;
-            if (pb == PB_Player)
-                name = SAV.Players[PlayerIndex].Personal.PlayerName;
-            else
-                name = "photo";
-
+            string name = SAV.Players[PlayerIndex].Personal.PlayerName;
             var bmp = pb.Image;
             using var sfd = new SaveFileDialog
             {
@@ -352,166 +393,18 @@ namespace NHSE.WinForms
             bmp.Save(sfd.FileName, ImageFormat.Png);
         }
 
-        private void B_DumpDesign_Click(object sender, EventArgs e)
-        {
-            if (ModifierKeys == Keys.Shift)
-            {
-                using var fbd = new FolderBrowserDialog();
-                if (fbd.ShowDialog() != DialogResult.OK)
-                    return;
-
-                var dir = Path.GetDirectoryName(fbd.SelectedPath);
-                if (dir == null || !Directory.Exists(dir))
-                    return;
-                SAV.Main.DumpDesigns(fbd.SelectedPath);
-                return;
-            }
-
-            var original = SAV.Main.GetDesign(PatternIndex);
-            var name = original.DesignName;
-            using var sfd = new SaveFileDialog
-            {
-                Filter = "New Horizons Design Pattern (*.nhd)|*.nhd|All files (*.*)|*.*",
-                FileName = $"{name}.nhd",
-            };
-            if (sfd.ShowDialog() != DialogResult.OK)
-                return;
-
-            var d = SAV.Main.GetDesign(PatternIndex);
-            File.WriteAllBytes(sfd.FileName, d.Data);
-        }
-
-        private void B_LoadDesign_Click(object sender, EventArgs e)
-        {
-            var original = SAV.Main.GetDesign(PatternIndex);
-            var name = original.DesignName;
-            using var ofd = new OpenFileDialog
-            {
-                Filter = "New Horizons Design Pattern (*.nhd)|*.nhd|All files (*.*)|*.*",
-                FileName = $"{name}.nhd",
-            };
-            if (ofd.ShowDialog() != DialogResult.OK)
-                return;
-
-            var file = ofd.FileName;
-            var expectLength = original.Data.Length;
-            var fi = new FileInfo(file);
-            if (fi.Length != expectLength)
-            {
-                var msg = string.Format(MessageStrings.MsgDataSizeMismatchImport, fi.Length, expectLength);
-                WinFormsUtil.Error(MessageStrings.MsgCanceling, msg);
-                return;
-            }
-
-            var data = File.ReadAllBytes(ofd.FileName);
-            var d = new DesignPattern(data);
-            var player0 = SAV.Players[0].Personal;
-            if (!d.IsOriginatedFrom(player0))
-            {
-                var notHost = string.Format(MessageStrings.MsgDataDidNotOriginateFromHost_0, player0.PlayerName);
-                var result = WinFormsUtil.Prompt(MessageBoxButtons.YesNoCancel, notHost, MessageStrings.MsgAskUpdateValues);
-                if (result == DialogResult.Cancel)
-                    return;
-                if (result == DialogResult.Yes)
-                    d.ChangeOrigins(player0, d.Data);
-            }
-
-            SAV.Main.SetDesign(d, PatternIndex);
-            LoadPattern(d);
-        }
-
-        private void PB_Pattern_MouseEnter(object sender, EventArgs e) => PB_Pattern.BackColor = Color.GreenYellow;
-        private void PB_Pattern_MouseLeave(object sender, EventArgs e) => PB_Pattern.BackColor = Color.Transparent;
-
-        private void B_EditBuildings_Click(object sender, EventArgs e)
-        {
-            var buildings = SAV.Main.Buildings;
-            using var editor = new BuildingEditor(buildings, SAV.Main);
-            if (editor.ShowDialog() == DialogResult.OK)
-                SAV.Main.Buildings = buildings;
-        }
-
         private void B_EditTurnipExchange_Click(object sender, EventArgs e)
         {
             var turnips = SAV.Main.Turnips;
-            using var editor = new SingleObjectEditor<TurnipStonk>(turnips, PropertySort.NoSort);
+            using var editor = new SingleObjectEditor<TurnipStonk>(turnips, PropertySort.Categorized, false);
             if (editor.ShowDialog() == DialogResult.OK)
                 SAV.Main.Turnips = turnips;
-        }
-
-        private void B_EditAcres_Click(object sender, EventArgs e)
-        {
-            using var editor = new AcreEditor(SAV.Main);
-            editor.ShowDialog();
-        }
-
-        private void B_EditTerrain_Click(object sender, EventArgs e)
-        {
-            using var editor = new TerrainEditor(SAV.Main);
-            editor.ShowDialog();
         }
 
         private void B_EditFieldItems_Click(object sender, EventArgs e)
         {
             using var editor = new FieldItemEditor(SAV.Main);
             editor.ShowDialog();
-        }
-
-        private void B_DumpHouse_Click(object sender, EventArgs e)
-        {
-            if (ModifierKeys == Keys.Shift)
-            {
-                using var fbd = new FolderBrowserDialog();
-                if (fbd.ShowDialog() != DialogResult.OK)
-                    return;
-
-                var dir = Path.GetDirectoryName(fbd.SelectedPath);
-                if (dir == null || !Directory.Exists(dir))
-                    return;
-                SAV.DumpPlayerHouses(fbd.SelectedPath);
-                return;
-            }
-
-            var index = (int)(NUD_PlayerHouse.Value - 1);
-            var name = CB_Players.Items[index].ToString();
-            using var sfd = new SaveFileDialog
-            {
-                Filter = "New Horizons Player House (*.nhph)|*.nhph|All files (*.*)|*.*",
-                FileName = $"{name}.nhph",
-            };
-            if (sfd.ShowDialog() != DialogResult.OK)
-                return;
-
-            var h = SAV.Main.GetPlayerHouse(index);
-            var data = h.ToBytesClass();
-            File.WriteAllBytes(sfd.FileName, data);
-        }
-
-        private void B_LoadHouse_Click(object sender, EventArgs e)
-        {
-            var index = (int)(NUD_PlayerHouse.Value - 1);
-            var name = CB_Players.Items[index].ToString();
-            using var ofd = new OpenFileDialog
-            {
-                Filter = "New Horizons Player House (*.nhph)|*.nhph|All files (*.*)|*.*",
-                FileName = $"{name}.nhph",
-            };
-            if (ofd.ShowDialog() != DialogResult.OK)
-                return;
-
-            var file = ofd.FileName;
-            var fi = new FileInfo(file);
-            const int expectLength = PlayerHouse.SIZE;
-            if (fi.Length != expectLength)
-            {
-                var msg = string.Format(MessageStrings.MsgDataSizeMismatchImport, fi.Length, expectLength);
-                WinFormsUtil.Error(MessageStrings.MsgCanceling, msg);
-                return;
-            }
-
-            var data = File.ReadAllBytes(file);
-            var h = data.ToClass<PlayerHouse>();
-            SAV.Main.SetPlayerHouse(h, index);
         }
 
         private void B_EditLandFlags_Click(object sender, EventArgs e)
@@ -521,5 +414,84 @@ namespace NHSE.WinForms
             if (editor.ShowDialog() == DialogResult.OK)
                 SAV.Main.SetEventFlagLand(flags);
         }
+
+        private void B_EditPatterns_Click(object sender, EventArgs e)
+        {
+            var patterns = SAV.Main.GetDesigns();
+            using var editor = new PatternEditor(patterns);
+            if (editor.ShowDialog() == DialogResult.OK)
+                SAV.Main.SetDesigns(patterns);
+        }
+
+        private void B_EditPRODesigns_Click(object sender, EventArgs e)
+        {
+            var patterns = SAV.Main.GetDesignsPRO();
+            using var editor = new PatternEditorPRO(patterns);
+            if (editor.ShowDialog() == DialogResult.OK)
+                SAV.Main.SetDesignsPRO(patterns);
+        }
+
+        private void B_EditPatternFlag_Click(object sender, EventArgs e)
+        {
+            var patterns = new[] {SAV.Main.FlagMyDesign};
+            using var editor = new PatternEditor(patterns);
+            if (editor.ShowDialog() == DialogResult.OK)
+                SAV.Main.FlagMyDesign = patterns[0];
+        }
+
+        private void B_EditDesignsTailor_Click(object sender, EventArgs e)
+        {
+            var patterns = SAV.Main.GetDesignsTailor();
+            using var editor = new PatternEditorPRO(patterns);
+            if (editor.ShowDialog() == DialogResult.OK)
+                SAV.Main.SetDesignsTailor(patterns);
+        }
+
+        private static void ShowContextMenuBelow(ToolStripDropDown c, Control n) => c.Show(n.PointToScreen(new Point(0, n.Height)));
+        private void B_EditPlayer_Click(object sender, EventArgs e) => ShowContextMenuBelow(CM_EditPlayer, B_EditPlayer);
+        private void B_EditMap_Click(object sender, EventArgs e) => ShowContextMenuBelow(CM_EditMap, B_EditMap);
+
+        private void B_EditPlayerHouses_Click(object sender, EventArgs e)
+        {
+            var houses = SAV.Main.GetPlayerHouses();
+            using var editor = new PlayerHouseEditor(houses, SAV.Players, PlayerIndex);
+            if (editor.ShowDialog() == DialogResult.OK)
+                SAV.Main.SetPlayerHouses(houses);
+        }
+
+        private void B_EditBulletin_Click(object sender, EventArgs e)
+        {
+            var boxed = SAV.Main.Bulletin;
+            using var editor = new SingleObjectEditor<object>(boxed, PropertySort.NoSort, false);
+            if (editor.ShowDialog() == DialogResult.OK)
+                SAV.Main.Bulletin = boxed;
+        }
+
+        private void B_EditFieldGoods_Click(object sender, EventArgs e)
+        {
+            var boxed = SAV.Main.SaveFg;
+            using var editor = new SingleObjectEditor<object>(boxed, PropertySort.NoSort, false);
+            if (editor.ShowDialog() == DialogResult.OK)
+                SAV.Main.SaveFg = boxed;
+        }
+
+        private void B_EditMuseum_Click_Click(object sender, EventArgs e)
+        {
+            var museum = SAV.Main.Museum;
+            using var editor = new MuseumEditor(museum);
+            if (editor.ShowDialog() == DialogResult.OK)
+                SAV.Main.Museum = museum;
+        }
+
+        private void B_EditVisitors_Click(object sender, EventArgs e)
+        {
+            var boxed = SAV.Main.Visitor;
+            using var editor = new SingleObjectEditor<object>(boxed, PropertySort.NoSort, false);
+            if (editor.ShowDialog() == DialogResult.OK)
+                SAV.Main.Visitor = boxed;
+        }
+
+        private void NUD_PocketCount_ValueChanged(object sender, EventArgs e) => ((NumericUpDown) sender).BackColor = (uint) ((NumericUpDown) sender).Value > 20 ? Color.Red : NUD_BankBells.BackColor;
+        private void NUD_Wallet_ValueChanged(object sender, EventArgs e) => NUD_Wallet.BackColor = (ulong) NUD_Wallet.Value > 99_999 ? Color.Red : NUD_BankBells.BackColor;
     }
 }

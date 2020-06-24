@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 
 namespace NHSE.Core
 {
     public class Villager : IVillagerOrigin
     {
+        public const int SIZE = 0x12AB0;
+
         public readonly byte[] Data;
         public Villager(byte[] data) => Data = data;
 
@@ -27,48 +28,63 @@ namespace NHSE.Core
             set => Data[2] = (byte)value;
         }
 
-        public uint TownID
+        public string TownName => GetMemory(0).TownName;
+        public byte[] GetTownIdentity() => GetMemory(0).GetTownIdentity();
+        public string PlayerName => GetMemory(0).PlayerName;
+        public byte[] GetPlayerIdentity() => GetMemory(0).GetPlayerIdentity();
+
+        public const int PlayerMemoryCount = 8;
+
+        public GSaveMemory GetMemory(int index)
         {
-            get => BitConverter.ToUInt32(Data, 0x04);
-            set => BitConverter.GetBytes(value).CopyTo(Data, 0x04);
+            if ((uint) index >= PlayerMemoryCount)
+                throw new ArgumentOutOfRangeException(nameof(index));
+
+            var bytes = Data.Slice(0x4 + (index * GSaveMemory.SIZE), GSaveMemory.SIZE);
+            return new GSaveMemory(bytes);
         }
 
-        public string TownName
+        public GSaveMemory[] GetMemories()
         {
-            get => GetString(0x08, 10);
-            set => GetBytes(value, 10).CopyTo(Data, 0x08);
-        }
-        public byte[] GetTownIdentity() => Data.Slice(0x04, 4 + 20);
-
-        public uint PlayerID
-        {
-            get => BitConverter.ToUInt32(Data, 0x20);
-            set => BitConverter.GetBytes(value).CopyTo(Data, 0x20);
+            var memories = new GSaveMemory[PlayerMemoryCount];
+            for (int i = 0; i < memories.Length; i++)
+                memories[i] = GetMemory(i);
+            return memories;
         }
 
-        public string PlayerName
+        public void SetMemory(GSaveMemory memory, int index)
         {
-            get => GetString(0x24, 10);
-            set => GetBytes(value, 10).CopyTo(Data, 0x24);
+            if ((uint)index >= PlayerMemoryCount)
+                throw new ArgumentOutOfRangeException(nameof(index));
+
+            memory.Data.CopyTo(Data, 0x4 + (index * GSaveMemory.SIZE));
         }
 
-        public byte[] GetPlayerIdentity() => Data.Slice(0x20, 4 + 20);
-
-        public string TownName2
+        public void SetMemories(IReadOnlyList<GSaveMemory> memories)
         {
-            get => GetString(0x5CC, 10);
-            set => GetBytes(value, 10).CopyTo(Data, 0x5CC);
+            for (int i = 0; i < memories.Count; i++)
+                SetMemory(memories[i], i);
         }
 
         public string CatchPhrase
         {
-            get => GetString(0x10014, 2 * 12);
-            set => GetBytes(value, 2 * 12).CopyTo(Data, 0x10014);
+            get => StringUtil.GetString(Data, 0x10014, 2 * 12);
+            set => StringUtil.GetBytes(value, 2 * 12).CopyTo(Data, 0x10014);
         }
 
-        public IReadOnlyList<VillagerItem> Furniture
+        private const int WearCount = 24;
+
+        public IReadOnlyList<VillagerItem> WearStockList
         {
-            get => VillagerItem.GetArray(Data.Slice(0x105EC, 16 * VillagerItem.SIZE));
+            get => VillagerItem.GetArray(Data.Slice(0x101CC, WearCount * VillagerItem.SIZE));
+            set => VillagerItem.SetArray(value).CopyTo(Data, 0x101CC);
+        }
+
+        private const int FurnitureCount = 32;
+
+        public IReadOnlyList<VillagerItem> FtrStockList
+        {
+            get => VillagerItem.GetArray(Data.Slice(0x105EC, FurnitureCount * VillagerItem.SIZE));
             set => VillagerItem.SetArray(value).CopyTo(Data, 0x105EC);
         }
 
@@ -97,19 +113,28 @@ namespace NHSE.Core
         public string InternalName => VillagerUtil.GetInternalVillagerName((VillagerSpecies) Species, Variant);
         public int Gender => ((int)Personality / 4) & 1; // 0 = M, 1 = F
 
-        public string GetString(int offset, int maxLength)
+        public GSaveRoomFloorWall Room
         {
-            var str = Encoding.Unicode.GetString(Data, offset, maxLength * 2);
-            return StringUtil.TrimFromZero(str);
+            get => Data.Slice(0x12100, GSaveRoomFloorWall.SIZE).ToStructure<GSaveRoomFloorWall>();
+            set => value.ToBytes().CopyTo(Data, 0x12100);
         }
 
-        public static byte[] GetBytes(string value, int maxLength)
+        public DesignPatternPRO Design
         {
-            if (value.Length > maxLength)
-                value = value.Substring(0, maxLength);
-            else if (value.Length < maxLength)
-                value = value.PadRight(maxLength, '\0');
-            return Encoding.Unicode.GetBytes(value);
+            get => new DesignPatternPRO(Data.Slice(0x12128, DesignPatternPRO.SIZE));
+            set => value.Data.CopyTo(Data, 0x12128);
+        }
+
+        public void SetFriendshipAll(byte value = byte.MaxValue)
+        {
+            for (int i = 0; i < PlayerMemoryCount; i++)
+            {
+                var m = GetMemory(i);
+                if (string.IsNullOrEmpty(m.PlayerName))
+                    continue;
+                m.Friendship = value;
+                SetMemory(m, i);
+            }
         }
     }
 }

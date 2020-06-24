@@ -32,11 +32,18 @@ namespace NHSE.WinForms
         public static string MsgFieldItemRemoveAsk { get; set; } = "Are you sure you want to remove {0}?";
         public static string MsgFieldItemRemoveNone { get; set; } = "Nothing removed (none found).";
         public static string MsgFieldItemRemoveCount { get; set; } = "Removed {0} from the map.";
+        public static string MsgFieldItemModifyAsk { get; set; } = "Are you sure you want to {0}?";
+        public static string MsgFieldItemModifyNone { get; set; } = "Nothing modified (none found).";
+        public static string MsgFieldItemModifyCount { get; set; } = "Modified {0} tiles on the map.";
+        public static string MsgFieldItemUnsupportedLayer2Tile { get; set; } = "Unsupported Layer2 items detected.";
 
         public static string MsgSysBotInfo { get; set; } = "This SysBot reads and writes RAM directly to your game when called to Read/Write.";
         public static string MsgSysBotRequired { get; set; } = "Using this functionality requires the sys-botbase sysmodule running on the console. Your console must be on the same network as the PC running this program.";
 
         public static string MsgTerrainSetElevation0 { get; set; } = "Set the elevation of all tiles on the map to 0?";
         public static string MsgTerrainSetAll { get; set; } = "Set the tile from the Tile Editor to all tiles on the map?";
+        public static string MsgTerrainSetAllSkipExterior { get; set; } = "Do you want to skip the tiles in exterior acres (beach/rocks)?";
+
+        public static string MsgVillagerFriendshipMax { get; set; } = "Do you want to set all Villager Friendship memories to 255?";
     }
 }
